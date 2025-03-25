@@ -1,0 +1,41 @@
+version: '3.6'
+
+services:
+  rasa:
+    image: rasa/rasa:latest
+    ports:
+      - "5005:5005"
+    volumes:
+      - ./:/app
+    command: run --enable-api --cors "*"
+    depends_on:
+      - db
+
+  rasa-x:
+    image: rasa/rasa-x:latest
+    ports:
+      - "5002:5002"
+    environment:
+      - RASA_X_HOST=rasa-x
+      - RASA_X_PASSWORD=rasa  # Senha para o Rasa X (pode ser alterada para algo mais seguro)
+      - RASA_X_DB_HOST=db
+      - RASA_X_DB_PORT=5432
+      - RASA_X_DB_USER=rasa  # Usuário do banco de dados
+      - RASA_X_DB_PASSWORD=rasa  # Senha do banco de dados
+      - RASA_X_DB_DATABASE=rasa  # Nome do banco de dados
+    volumes:
+      - ./:/app
+    depends_on:
+      - db
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: rasa  # Usuário do banco de dados
+      POSTGRES_PASSWORD: rasa  # Senha do banco de dados
+      POSTGRES_DB: rasa  # Nome do banco de dados
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
