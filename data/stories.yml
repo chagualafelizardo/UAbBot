@@ -1,0 +1,27 @@
+version: "3.1"
+
+stories:
+  - story: happy path
+    steps:
+    - intent: greet
+    - action: utter_greet
+    - intent: mood_great
+    - action: utter_mood_great  # Alterado para usar a resposta específica
+
+  - story: sad path 1
+    steps:
+    - intent: greet
+    - action: utter_greet
+    - intent: mood_unhappy
+    - action: utter_mood_unhappy  # Alterado para usar a resposta específica
+    - intent: affirm
+    - action: utter_affirm  # Alterado para usar a resposta específica
+
+  - story: sad path 2
+    steps:
+    - intent: greet
+    - action: utter_greet
+    - intent: mood_unhappy
+    - action: utter_mood_unhappy  # Alterado para usar a resposta específica
+    - intent: deny
+    - action: utter_deny  # Alterado para usar a resposta específica

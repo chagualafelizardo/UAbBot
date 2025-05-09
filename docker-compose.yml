@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  rasa:
+    build:
+      context: .
+      dockerfile: Dockerfile.rasa
+    container_name: rasa_server
+    ports:
+      - "5005:5005"
+    volumes:
+      - .:/app
+    command: >
+      run
+      --enable-api
+      --cors "*"
+      --debug
+
+  action_server:
+    build:
+      context: .
+      dockerfile: Dockerfile.actions
+    container_name: rasa_action_server
+    volumes:
+      - ./actions:/app/actions
+    ports:
+      - "5055:5055"
+    command: >
+      start
+      --actions actions
+
+  web:
+    image: python:3.9-slim
+    container_name: rasa_web
+    working_dir: /usr/src/app
+    volumes:
+      - ./web:/usr/src/app
+    ports:
+      - "8000:8000"
+    command: python -m http.server 8000

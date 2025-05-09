@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>UAbBot Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #333;
+      color: #fff;
+      padding: 10px;
+      position: relative;
+    }
+
+    #openBot {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: #007bff;
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    /* Chat Container - Visível por padrão */
+    #chatContainer {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 300px;
+      background-color: #f4f4f4;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 999;
+    }
+
+    #chatContainer.maximized {
+      width: 90vw;
+      height: 80vh;
+      bottom: 10vh;
+      right: 5vw;
+    }
+
+    #chatHeader {
+      background-color: #007bff;
+      color: white;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #chatHeader button {
+      background: none;
+      border: none;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+
+    #languageToggle {
+      background-color: white;
+      color: #007bff;
+      border: none;
+      padding: 5px 10px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #chat {
+      height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      background-color: white;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .msg {
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 8px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+
+    .user {
+      background-color: #e6f7ff;
+      align-self: flex-end;
+    }
+
+    .bot {
+      background-color: #f5f5f5;
+      align-self: flex-start;
+      border: 1px solid #ddd;
+    }
+
+    #chatInput {
+      display: flex;
+      border-top: 1px solid #ccc;
+      background-color: white;
+      padding: 10px;
+    }
+
+    #userInput {
+      border: 1px solid #ddd;
+      padding: 8px;
+      flex: 1;
+      border-radius: 20px;
+      outline: none;
+    }
+
+    #bottomBar {
+      display: flex;
+      justify-content: space-between;
+      background-color: #f5f7fa;
+      padding: 8px 10px;
+      border-top: 1px solid #ddd;
+    }
+
+    #emojiBtn, #clearBtn, #sendBtn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 5px;
+    }
+
+    #sendBtn {
+      background: #007bff;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #sendBtn svg {
+      width: 16px;
+      height: 16px;
+      fill: white;
+    }
+
+    #emojiPicker span {
+      font-size: 24px;
+      padding: 5px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    #emojiPicker span:hover {
+      transform: scale(1.2);
+    }
+
+    #emojiPicker span {
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    .typing-indicator {
+      font-style: italic;
+      color: #666;
+      display: flex;
+      align-items: center;
+    }
+
+    .typing-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background-color: #007bff;
+      margin-left: 4px;
+      animation: blink 1s infinite;
+    }
+
+    .typing-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.1);
+      border-top: 2px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 8px;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h2>Web Page</h2>
+    <button id="openBot" onclick="toggleChat()">Chat with UAbBot</button>
+  </header>
+
+  <main style="padding: 20px;">
+    <p>This is your main page content...</p>
+  </main>
+
+  <!-- Chat Container -->
+  <div id="chatContainer">
+    <div id="chatHeader">
+      <span>UAbBot</span>
+      <div>
+        <button id="languageToggle" onclick="toggleLanguage()">EN</button>
+        <button id="maximizeBtn" onclick="toggleMaximize()">⛶</button>
+        <button onclick="toggleChat()">×</button>
+      </div>
+    </div>
+    <div id="chat"></div>
+    <div id="chatInput">
+      <input type="text" id="userInput" placeholder="Type your message..." />
+    </div>
+    <div id="bottomBar">
+      <button id="emojiBtn" onclick="toggleEmojiPicker()">😊</button>
+      <button id="clearBtn" onclick="clearChat()" title="Clear chat">🧹</button>
+      <button id="sendBtn" onclick="sendMessage()" title="Send message">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </div>
+    <div id="emojiPicker"></div>
+  </div>
+
+  <script>
+    // Elementos DOM
+    const chatContainer = document.getElementById("chatContainer");
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("userInput");
+    const maximizeBtn = document.getElementById("maximizeBtn");
+    const languageBtn = document.getElementById("languageToggle");
+    const emojiPicker = document.getElementById("emojiPicker");
+    
+    // Estado
+    let currentLanguage = 'en';
+    let typingIndicator = null;
+    let isTyping = false;
+
+    // Emojis disponíveis
+    const emojis = [
+      "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", 
+      "🙂", "🙃", "😉", "😍", "🥰", "😘", "😗", "😙", "😚", "😋",
+      "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳",
+      "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖",
+      "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯",
+      "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔",
+      "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯", "😦",
+      "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😵", "🤐", "🥴",
+      "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👿",
+      "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾", "🤖",
+      "🎃", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾"
+    ];
+    
+    // Inicialização
+    document.addEventListener("DOMContentLoaded", function() {
+    //   // Preenche o picker de emojis
+    //   emojis.forEach(emoji => {
+    //     const span = document.createElement("span");
+    //     span.textContent = emoji;
+    //     span.style.fontSize = "24px";  // Tamanho aumentado para melhor visualização
+    //     span.style.cursor = "pointer";
+    //     span.style.padding = "5px";
+    //     span.onclick = () => {
+    //       input.value += emoji;
+    //       input.focus();
+    //       emojiPicker.style.display = "none";
+    //     };
+    //     emojiPicker.appendChild(span);
+    //   });
+      
+      appendMessage("bot", "Olá! Eu sou o UAbBot, o seu assistente virtual. Como posso ajudar você hoje? 👋");
+    });
+
+    // Funções
+    function toggleLanguage() {
+      currentLanguage = currentLanguage === 'en' ? 'pt' : 'en';
+      languageBtn.textContent = currentLanguage.toUpperCase();
+      appendMessage("bot", `Language changed to ${currentLanguage === 'en' ? 'English' : 'Portuguese'}`);
+    }
+
+    function toggleChat() {
+      chatContainer.style.display = chatContainer.style.display === "none" ? "flex" : "none";
+      emojiPicker.style.display = "none";
+    }
+
+    function toggleMaximize() {
+      chatContainer.classList.toggle("maximized");
+      maximizeBtn.textContent = chatContainer.classList.contains("maximized") ? "🗗" : "⛶";
+    }
+
+    function toggleEmojiPicker() {
+      // Carrega emojis apenas na primeira vez que o picker é aberto
+      if (emojiPicker.children.length === 0) {
+        emojis.forEach(emoji => {
+          const span = document.createElement("span");
+          span.textContent = emoji;
+          span.style.fontSize = "24px";
+          span.style.cursor = "pointer";
+          span.style.padding = "5px";
+          span.onclick = () => {
+            input.value += emoji;
+            input.focus();
+            emojiPicker.style.display = "none";
+          };
+          emojiPicker.appendChild(span);
+        });
+      }
+      
+      // Alterna a visibilidade
+      emojiPicker.style.display = emojiPicker.style.display === "none" ? "flex" : "none";
+    }
+
+    function clearChat() {
+      chat.innerHTML = "";
+      appendMessage("bot", "Histórico de chat apagado. Como posso ajudar você?");
+    }
+
+    function appendMessage(sender, text) {
+      const msgElement = document.createElement("div");
+      msgElement.className = `msg ${sender}`;
+      msgElement.textContent = text;
+      chat.appendChild(msgElement);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function showTyping() {
+      if (isTyping) return;
+      isTyping = true;
+      
+      typingIndicator = document.createElement("div");
+      typingIndicator.className = "msg bot typing-indicator";
+      typingIndicator.innerHTML = 'UAbBot is typing<span class="typing-cursor"></span>';
+      chat.appendChild(typingIndicator);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function hideTyping() {
+      if (!isTyping) return;
+      isTyping = false;
+      
+      if (typingIndicator) {
+        chat.removeChild(typingIndicator);
+        typingIndicator = null;
+      }
+    }
+
+    async function sendMessage() {
+      const message = input.value.trim();
+      if (!message) return;
+
+      appendMessage("user", message);
+      input.value = "";
+      showTyping();
+
+      try {
+        const response = await fetch("http://localhost:5005/webhooks/rest/webhook", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({ 
+            sender: "user_" + Date.now(), // Garante sender único
+            message: message,
+            metadata: {
+              language: currentLanguage
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        hideTyping();
+        
+        if (data && data.length > 0) {
+          data.forEach(response => {
+            if (response.text) {
+              appendMessage("bot", response.text);
+            } else if (response.custom) {
+              // Trate respostas customizadas se necessário
+              appendMessage("bot", JSON.stringify(response.custom));
+            }
+          });
+        } else {
+          appendMessage("bot", "Não entendi. Poderia reformular?");
+        }
+      } catch (error) {
+        hideTyping();
+        console.error("Full error:", error);
+        appendMessage("bot", `Desculpe, ocorreu um erro: ${error.message}`);
+      }
+    }
+
+    // Event Listeners
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    // Fecha o emoji picker ao clicar fora
+    document.addEventListener("click", (e) => {
+      if (!emojiPicker.contains(e.target) && e.target.id !== "emojiBtn") {
+        emojiPicker.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>

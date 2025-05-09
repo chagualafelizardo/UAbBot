@@ -1,0 +1,48 @@
+version: "3.1"
+
+rules:
+  - rule: Responder a saudações
+    steps:
+      - intent: greet
+      - action: utter_greet
+
+  - rule: Responder a despedidas
+    steps:
+      - intent: goodbye
+      - action: utter_goodbye
+
+  - rule: Responder a afirmações positivas
+    steps:
+      - intent: affirm
+      - action: utter_affirm
+
+  - rule: Responder a negações
+    steps:
+      - intent: deny
+      - action: utter_deny
+
+  - rule: Responder a bom humor
+    steps:
+      - intent: mood_great
+      - action: utter_mood_great
+
+  - rule: Responder a mau humor
+    steps:
+      - intent: mood_unhappy
+      - action: utter_mood_unhappy
+
+  - rule: Responder a desafios de bot
+    steps:
+      - intent: bot_challenge
+      - action: utter_iamabot
+
+  - rule: Fallback para pesquisa web
+    steps:
+      - intent: nlu_fallback
+      - action: utter_default
+      - action: action_fallback_web_search
+
+  - rule: Buscar cursos da UAb
+    steps:
+      - intent: ask_uab_courses
+      - action: action_search_uab_courses

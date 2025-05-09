@@ -1,0 +1,97 @@
+version: "3.1"
+
+intents:
+  - greet
+  - goodbye
+  - affirm
+  - deny
+  - mood_great
+  - mood_unhappy
+  - bot_challenge
+  - nlu_fallback
+  - ask_uab_courses
+
+entities:
+  - course_type:
+      synonyms:
+        - licenciatura: licenciatura
+        - lecienciatura: licenciatura
+        - graduação: licenciatura
+        - mestrado: mestrado
+        - pós-graduação: mestrado
+  - course_name:
+      synonyms:
+        - informatica: Informática
+        - psicologia: Psicologia
+        - gestao: Gestão
+        - matematica: Matemática
+
+slots:
+  course_type:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_text
+  course_name:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_text
+
+responses:
+  utter_greet:
+    - text: "Bom dia! Em que posso ajudar hoje?"
+  
+  utter_goodbye:
+    - text: "Tchau"
+  
+  utter_iamabot:
+    - text: "Sou um bot, desenvolvido com Rasa."
+  
+  utter_default:
+    - text: "Não tenho certeza se entendi. Deixe-me verificar na internet para você ..."
+  
+  utter_happy:
+    - text: "Muito bem, continue!"
+  
+  utter_affirm:
+    - text: "Ótimo! Como posso continuar ajudando?"
+  
+  utter_deny:
+    - text: "Entendi. Posso ajudar em algo mais?"
+  
+  utter_mood_great:
+    - text: "Que bom! Estou aqui para ajudar."
+  
+  utter_mood_unhappy:
+    - text: "Sinto muito ouvir isso. Como posso ajudar?"
+  
+  utter_cheer_up:
+    - text: "Aqui está algo para animar você:"
+      image: "https://i.imgur.com/nGF1K8f.jpg"
+  
+  utter_courses_list:
+    - text: |
+          Aqui estão alguns cursos de {course_type} disponíveis:
+          {formatted_courses}
+
+  utter_specific_course_info:
+    - text: |
+          O curso {course_name} ({course_level}) está disponível. Veja mais em: {course_url}
+
+  utter_course_not_found:
+    - text: |
+          Não encontrei nenhum curso com esse nome. Aqui estão outras opções:
+
+  utter_ask_course_type:
+    - text: |
+        Que tipo de curso está à procura? Licenciatura, Mestrado ou Doutoramento?
+
+actions:
+  - action_fallback_web_search
+  - action_search_uab_courses
+  - action_get_course_details
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

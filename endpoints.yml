@@ -1,0 +1,2 @@
+action_endpoint:
+  url: "http://host.docker.internal:5055/webhook"

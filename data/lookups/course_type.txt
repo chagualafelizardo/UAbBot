@@ -1,0 +1,8 @@
+licenciatura
+licenciaturas
+graduação
+mestrado
+mestrados
+pós-graduação
+doutoramento
+doutoramentos

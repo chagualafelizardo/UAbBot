@@ -1,0 +1,152 @@
+version: "3.1"
+
+nlu:
+- intent: greet
+  examples: |
+    - Olá
+    - Bom dia
+    - Boa tarde
+    - Boa noite
+    - Ei pá
+    - Tudo bem?
+    - Como está?
+    - Viva!
+    - Olá meu rico
+    - Estou?
+    - Boas!
+    - Yo!
+    - Tá-se?
+    - Olá querido(a)
+    - Meu amor
+    - Ó meu rico
+
+- intent: goodbye
+  examples: |
+    - Adeus
+    - Até logo
+    - Tchau
+    - Até breve
+    - Tchauzinho
+    - Falou!
+    - Bora!
+    - Vou andando!
+    - Beijinho!
+    - Até amanhã!
+    - Viva!
+    - Boa noite
+
+- intent: affirm
+  examples: |
+    - Sim
+    - Claro
+    - Com certeza
+    - Exactamente
+    - Ya
+    - Óbvio
+    - Fixe
+    - Porreiro
+    - Perfeito
+    - Excelente
+    - Top
+    - Bora
+    - 100%
+    - Afirmativo
+    - Confirmo
+    - De acordo
+
+- intent: deny
+  examples: |
+    - Não
+    - Nunca
+    - Jamais
+    - Nem pensar
+    - Acho que não
+    - Não obrigado
+    - Discordo
+    - Nah
+    - Nope
+    - Zero!
+    - Nem por isso
+    - Isso é que não!
+    - Negativo
+
+- intent: mood_great
+  examples: |
+    - Estou ótimo
+    - Sinto-me um rei
+    - Maravilhoso
+    - Estou nas nuvens!
+    - Estou a mil!
+    - Tá brutal!
+    - Sou o rei!
+    - Isto é melhor que bacalhau com natas!
+    - Estou radiante!
+    - Não podia estar melhor!
+
+- intent: mood_unhappy
+  examples: |
+    - Estou triste
+    - Não me sinto bem
+    - Desapontado
+    - Super triste
+    - De rastos
+    - Estou numa fossa
+    - Só desgraça
+    - Nem te digo nada
+    - Tão deprê
+    - Uma tristeza sem fim
+
+- intent: bot_challenge
+  examples: |
+    - És um bot?
+    - Isto é automático?
+    - Há alguém real?
+    - Quem está a responder?
+    - És daqueles chatbots?
+    - Isto é inteligência artificial?
+    - Estou a falar com máquina?
+    - Há humano por trás disto?
+    - Isto responde sozinho?
+
+- intent: ask_uab_courses
+  examples: |
+    - Quais cursos tem a UAb?
+    - Mostra os cursos da Universidade Aberta
+    - Que cursos oferecem?
+    - Há licenciaturas na UAb?
+    - Existe curso de [Informática](course) na UAb?
+    - Quero estudar [Psicologia](course)
+    - Há mestrados em [Educação](course)?
+    - Lista de cursos disponíveis
+    - Que formações têm?
+    - Cursos da Universidade Aberta
+    - Opções de estudo na UAb
+    - Quais são as licenciaturas?
+    - Tem [Gestão](course)?
+    - Existe [Matemática](course) à distância?
+    - Quero informações sobre [História](course)
+    - Há pós-graduações?
+    - Cursos online disponíveis
+    - Formação em [Línguas](course)
+    - [Ciências](course) na UAb
+    - [Artes](course) na Universidade Aberta
+    - Quero informações sobre o [mestrado](course_type) em [Informática](course_name)
+    - Há [licenciatura](course_type) em [Psicologia](course_name)?
+    - Existe [Gestão](course_name) na UAb?
+    - Quais [licenciaturas](course_type) tem a UAb?
+    - Mostra os [mestrados](course_type) da Universidade Aberta
+    - Que [doutoramentos](course_type) oferecem?
+    - Há [licenciatura](course_type) em [Informática](course_name)?
+    - Existe curso de [Psicologia](course_name) na UAb?
+    - Quero estudar [Gestão](course_name)
+    - Há [mestrado](course_type) em [Educação](course_name)?
+    - Lista de cursos disponíveis
+    - Que formações têm?
+    - [Matemática](course_name) à distância
+    - Informações sobre [História](course_name)
+    - [Ciências](course_name) na UAb
+    - [Artes](course_name) na Universidade Aberta
+    - Quais os cursos de lecienciatura em informatica
+    - Lecenciatura em gestao
+    - Mestrado em psicologia
+    - Pos graduação em matematica
