@@ -19,6 +19,8 @@ nlu:
     - Olá querido(a)
     - Meu amor
     - Ó meu rico
+    - Preciso de ajuda
+    - Viva
 
 - intent: goodbye
   examples: |

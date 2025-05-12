@@ -41,6 +41,8 @@ slots:
 responses:
   utter_greet:
     - text: "Bom dia! Em que posso ajudar hoje?"
+    - text: "Sim, em que posso ajudar hoje?"
+    - text: "Sim, força, em que posso ajudar hoje?"
   
   utter_goodbye:
     - text: "Tchau"
@@ -86,6 +88,9 @@ responses:
   utter_ask_course_type:
     - text: |
         Que tipo de curso está à procura? Licenciatura, Mestrado ou Doutoramento?
+
+  utter_course_details:
+    - text: "Aqui estão os detalhes completos do curso:\n\n{details}"
 
 actions:
   - action_fallback_web_search

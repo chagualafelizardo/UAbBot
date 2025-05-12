@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt">
 <head>
-  <meta charset="UTF-8" />
-  <title>UAbBot in Rasa</title>
+  <meta charset="UTF-8">
+  <title>UAbBot Chat</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -17,21 +17,31 @@
       position: relative;
     }
 
+    /* Ícone do Chat */
     #openBot {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background-color: #007bff;
-      border: none;
-      color: white;
-      padding: 8px 16px;
-      cursor: pointer;
-      border-radius: 5px;
-    }
-
-    #chatContainer {
       position: fixed;
       bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      cursor: pointer;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      border: 2px solid #007bff;
+      z-index: 1000;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      object-fit: cover;
+    }
+
+    #openBot:hover {
+      transform: scale(1.1) rotate(10deg);
+      box-shadow: 0 0 15px rgba(0, 123, 255, 0.7);
+    }
+
+    /* Chat Container */
+    #chatContainer {
+      position: fixed;
+      bottom: 90px;
       right: 20px;
       width: 300px;
       background-color: #f4f4f4;
@@ -42,6 +52,11 @@
       flex-direction: column;
       overflow: hidden;
       z-index: 999;
+      height: 500px; /* Altura inicial */
+    }
+
+    #chatContainer.active {
+      display: flex;
     }
 
     #chatContainer.maximized {
@@ -49,10 +64,6 @@
       height: 80vh;
       bottom: 10vh;
       right: 5vw;
-    }
-
-    #chatContainer.maximized #chat {
-      height: calc(100% - 100px);
     }
 
     #chatHeader {
@@ -81,103 +92,212 @@
       font-weight: bold;
       border-radius: 5px;
       cursor: pointer;
-      margin-left: 10px;
     }
 
     #chat {
-      height: 300px;
-      overflow-y: auto;
-      padding: 10px;
-      background-color: white;
+      height: 300px; /* Altura fixa */
+      overflow-y: auto; /* Sempre mostra barra de rolagem quando necessário */
+      padding: 15px;
       display: flex;
       flex-direction: column;
+      gap: 10px; /* Espaço entre mensagens */
+    }
+
+    /* Estilização melhorada da barra de rolagem */
+    #chat::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #chat::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    #chat::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+
+    #chat::-webkit-scrollbar-thumb:hover {
+      background: #555;
     }
 
     .msg {
-      margin: 5px 0;
-      padding: 8px;
-      border-radius: 8px;
+      margin: 10px;
+      padding: 12px 16px;
+      border-radius: 18px;
       max-width: 80%;
       word-wrap: break-word;
+      line-height: 1.4;
+      position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     .user {
-      background-color: #e6f7ff;
+      background-color: #007bff;
+      color: white;
       align-self: flex-end;
+      border-bottom-right-radius: 4px;
     }
 
     .bot {
-      background-color: white;
+      background-color: #f0f0f0;
+      color: #333;
       align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .user::after, .bot::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      width: 12px;
+      height: 12px;
+    }
+
+    .user::after {
+      right: -6px;
+      background-color: #007bff;
+      clip-path: polygon(0 0, 100% 0, 100% 100%);
+    }
+
+    .bot::after {
+      left: -6px;
+      background-color: #f0f0f0;
+      clip-path: polygon(0 0, 0 100%, 100% 0);
     }
 
     #chatInput {
       display: flex;
       border-top: 1px solid #ccc;
       background-color: white;
-      padding: 5px;
-      align-items: center;
+      padding: 10px;
     }
 
     #userInput {
-      border: none;
-      padding: 10px;
+      border: 1px solid #ddd;
+      padding: 8px;
       flex: 1;
-      font-size: 14px;
+      border-radius: 20px;
       outline: none;
-      background-color: white;
+    }
+
+    #bottomBar {
+      display: flex;
+      justify-content: space-between;
+      background-color: #f5f7fa;
+      padding: 8px 10px;
+      border-top: 1px solid #ddd;
+    }
+
+    #emojiBtn, #clearBtn, #sendBtn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 5px;
     }
 
     #sendBtn {
-      background: none;
-      border: none;
-      padding: 0;
-      cursor: pointer;
+      background: #007bff;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-left: auto;
     }
 
     #sendBtn svg {
-      background-color: #d9dadb;
-      padding: 4px;
-      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      fill: white;
+    }
+
+    #emojiPicker {
+      display: none;
+      flex-wrap: wrap;
+      padding: 10px;
+      background: white;
+      border-top: 1px solid #ddd;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    #emojiPicker span {
+      font-size: 24px;
+      padding: 5px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    #emojiPicker span:hover {
+      transform: scale(1.2);
     }
 
     .typing-indicator {
-      display: inline-block;
       font-style: italic;
+      color: #666;
+      display: flex;
+      align-items: center;
     }
 
     .typing-cursor {
       display: inline-block;
       width: 8px;
       height: 16px;
-      background-color: green;
+      background-color: #007bff;
       margin-left: 4px;
       animation: blink 1s infinite;
     }
 
-    .typing-spinner {
-      display: inline-block;
+    .notification-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background-color: red;
+      color: white;
+      border-radius: 50%;
       width: 20px;
       height: 20px;
-      border: 3px solid #ccc;
-      border-top: 3px solid green;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-left: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .course-bubble {
+      margin: 8px 0;
+      padding: 10px;
+      background-color: #e9f5ff;
+      border-radius: 12px;
+      border: 1px solid #d0e3ff;
+    }
+
+    .course-title {
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .details-btn {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 8px;
+      transition: background-color 0.3s;
+    }
+
+    .details-btn:hover {
+      background-color: #0056b3;
     }
 
     @keyframes blink {
       0%, 100% { opacity: 1; }
       50% { opacity: 0; }
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -185,57 +305,93 @@
 
   <header>
     <h2>Web Page</h2>
-    <button id="openBot" onclick="toggleChat()">Chat with UAbBot</button>
   </header>
 
   <main style="padding: 20px;">
-    <p>This is your main page content...</p>
+    <p>Conteúdo principal da página...</p>
   </main>
 
+  <!-- Ícone do Chat -->
+  <img id="openBot" src="{{ url_for('static', filename='images/uab_logo.png') }}" alt="Chat UAbBot" onclick="toggleChat()">
+
+  <!-- Chat Container -->
   <div id="chatContainer">
     <div id="chatHeader">
       <span>UAbBot</span>
       <div>
-        <button id="languageToggle" onclick="toggleLanguage()">EN</button>
+        <button id="languageToggle" onclick="toggleLanguage()">PT</button>
         <button id="maximizeBtn" onclick="toggleMaximize()">⛶</button>
         <button onclick="toggleChat()">×</button>
       </div>
     </div>
     <div id="chat"></div>
     <div id="chatInput">
-      <input type="text" id="userInput" placeholder="Type your message..." />
-      <button id="sendBtn" onclick="sendMessage()" aria-label="Send Message">
-        <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" fill="white">
-          <path d="M0 0h24v24H0V0z" fill="none"/>
+      <input type="text" id="userInput" placeholder="Digite sua mensagem..." />
+    </div>
+    <div id="bottomBar">
+      <button id="emojiBtn" onclick="toggleEmojiPicker()">😊</button>
+      <button id="clearBtn" onclick="clearChat()" title="Limpar chat">🧹</button>
+      <button id="sendBtn" onclick="sendMessage()" title="Enviar mensagem">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
           <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
         </svg>
       </button>
     </div>
+    <div id="emojiPicker"></div>
   </div>
 
   <script>
+    // Elementos DOM
     const chatContainer = document.getElementById("chatContainer");
     const chat = document.getElementById("chat");
     const input = document.getElementById("userInput");
     const maximizeBtn = document.getElementById("maximizeBtn");
     const languageBtn = document.getElementById("languageToggle");
-    let typingIndicatorElement = null;
-    let currentLanguage = 'en';
+    const emojiPicker = document.getElementById("emojiPicker");
+    const openBot = document.getElementById("openBot");
+    
+    // Estado
+    let currentLanguage = 'pt';
+    let typingIndicator = null;
+    let isTyping = false;
+    let hasNewMessage = false;
 
+    // Emojis disponíveis
+    const emojis = [
+      "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", 
+      "🙂", "🙃", "😉", "😍", "🥰", "😘", "😗", "😙", "😚", "😋",
+      "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳",
+      "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖",
+      "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯",
+      "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔",
+      "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯", "😦",
+      "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😵", "🤐", "🥴",
+      "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👿",
+      "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾", "🤖",
+      "🎃", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾"
+    ];
+
+    
+    // Inicialização
+    document.addEventListener("DOMContentLoaded", function() {
+      appendMessage("bot", "Olá! Eu sou o UAbBot, o seu assistente virtual. Como posso ajudar você hoje? 👋");
+    });
+
+    // Funções
     function toggleLanguage() {
       currentLanguage = currentLanguage === 'en' ? 'pt' : 'en';
       languageBtn.textContent = currentLanguage.toUpperCase();
-      appendMessage("bot", `Language changed to ${currentLanguage === 'en' ? 'English' : 'Portuguese'}.`);
+      input.placeholder = currentLanguage === 'en' ? "Type your message..." : "Digite sua mensagem...";
+      appendMessage("bot", `Idioma alterado para ${currentLanguage === 'en' ? 'Inglês' : 'Português'}`);
     }
 
     function toggleChat() {
-      const isHidden = chatContainer.style.display === "none" || chatContainer.style.display === "";
-      chatContainer.style.display = isHidden ? "flex" : "none";
-
-      if (isHidden) {
-        chatContainer.classList.remove("maximized");
-        maximizeBtn.textContent = "⛶";
-        appendMessage("bot", "Hello! How can I assist you today?");
+      chatContainer.classList.toggle("active");
+      emojiPicker.style.display = "none";
+      
+      if (chatContainer.classList.contains("active")) {
+        hasNewMessage = false;
+        updateNotificationBadge();
       }
     }
 
@@ -244,77 +400,285 @@
       maximizeBtn.textContent = chatContainer.classList.contains("maximized") ? "🗗" : "⛶";
     }
 
+    function toggleEmojiPicker() {
+      if (emojiPicker.children.length === 0) {
+        emojis.forEach(emoji => {
+          const span = document.createElement("span");
+          span.textContent = emoji;
+          span.style.fontSize = "24px";
+          span.style.cursor = "pointer";
+          span.style.padding = "5px";
+          span.onclick = () => {
+            input.value += emoji;
+            input.focus();
+            emojiPicker.style.display = "none";
+          };
+          emojiPicker.appendChild(span);
+        });
+      }
+      
+      emojiPicker.style.display = emojiPicker.style.display === "none" ? "flex" : "none";
+    }
+
+    function clearChat() {
+      chat.innerHTML = "";
+      appendMessage("bot", "Histórico de chat apagado. Como posso ajudar você?");
+    }
+
     function appendMessage(sender, text) {
-      const msg = document.createElement("div");
-      msg.className = "msg " + sender;
-      msg.textContent = `${sender === 'user' ? 'You' : 'UAbBot'}: ${text}`;
-      chat.appendChild(msg);
+      const msgElement = document.createElement("div");
+      msgElement.className = `msg ${sender}`;
+      
+      // Verifica se é uma lista de cursos (padrão: "1. Curso" ou "- 1. Curso")
+      if (text.match(/^(\d+\.\s.+(\n|$))+/gm) || text.match(/^-\s\d+\.\s.+(\n|$)/gm)) {
+          const lines = text.split('\n');
+          const listContainer = document.createElement("div");
+          
+          lines.forEach(line => {
+              if (line.trim()) {
+                  // Remove hífens se existirem e espaços extras
+                  const cleanedLine = line.replace(/^\s*-\s*/, '').trim();
+                  
+                  // Verifica se é um item de lista numerado
+                  const match = cleanedLine.match(/^(\d+\.)\s*(.+)/);
+                  
+                  if (match) {
+                      const courseBubble = document.createElement("div");
+                      courseBubble.className = "course-bubble";
+                      
+                      const courseTitle = document.createElement("div");
+                      courseTitle.className = "course-title";
+                      courseTitle.innerHTML = `<span style="font-weight:bold">${match[1]}</span> ${match[2]}`;
+                      
+                      const detailsBtn = document.createElement("button");
+                      detailsBtn.className = "details-btn";
+                      detailsBtn.textContent = "Ver Detalhes";
+                      detailsBtn.onclick = () => {
+                          // Envia comando especial para o Rasa com o nome exato do curso
+                          sendSpecialCommand(`/get_course_details{"course_name":"${match[2].trim()}"}`);
+                      };
+                      
+                      courseBubble.appendChild(courseTitle);
+                      courseBubble.appendChild(detailsBtn);
+                      listContainer.appendChild(courseBubble);
+                  } else if (line.trim()) {
+                      // Linha não é um curso (texto normal)
+                      const textLine = document.createElement("p");
+                      textLine.textContent = line;
+                      textLine.style.margin = "4px 0";
+                      listContainer.appendChild(textLine);
+                  }
+              }
+          });
+          
+          msgElement.appendChild(listContainer);
+      } 
+      // Se for HTML (links ou formatação)
+      else if (/<[a-z][\s\S]*>/i.test(text)) {
+          msgElement.innerHTML = text;
+      }
+      // Mensagem normal
+      else {
+          // Preserva quebras de linha
+          msgElement.innerHTML = text.replace(/\n/g, '<br>');
+      }
+      
+      chat.appendChild(msgElement);
       chat.scrollTop = chat.scrollHeight;
+      
+      if (sender === "bot" && !chatContainer.classList.contains("active")) {
+          hasNewMessage = true;
+          updateNotificationBadge();
+      }
+  }
+
+  // Função para enviar comandos especiais (como detalhes do curso)
+  function sendSpecialCommand(command) {
+    showTyping();
+    
+    fetch("http://localhost:5005/webhooks/rest/webhook", {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
+        body: JSON.stringify({ 
+            sender: "user_" + Date.now(),
+            message: command,
+            metadata: {
+                language: currentLanguage
+            }
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        hideTyping();
+        if (data && data.length > 0) {
+            // Verifica se a resposta contém os detalhes ou se é a lista novamente
+            const isCourseDetails = data.some(item => 
+                item.text && item.text.includes("Descrição:") || 
+                item.text.includes("Duração:") || 
+                item.text.includes("Coordenação:")
+            );
+            
+            if (!isCourseDetails) {
+                appendMessage("bot", "Não encontrei detalhes específicos para este curso. Por favor, tente novamente ou consulte nosso site.");
+            } else {
+                data.forEach(response => {
+                    if (response.text) {
+                        appendMessage("bot", response.text);
+                    }
+                });
+            }
+        } else {
+            appendMessage("bot", "Não recebi informações sobre este curso. Por favor, tente novamente.");
+        }
+    })
+    .catch(error => {
+        hideTyping();
+        console.error("Erro:", error);
+        appendMessage("bot", `Desculpe, ocorreu um erro ao buscar detalhes. Erro: ${error.message}`);
+    });
+  }
+
+    function showCourseDetails(courseName) {
+        // Mostra indicador de que o bot está pesquisando
+        showTyping();
+        
+        // Faz a requisição para o webhook do Rasa
+        fetch("http://localhost:5005/webhooks/rest/webhook", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({ 
+                sender: "user_" + Date.now(),
+                message: `/get_course_details{"course_name":"${courseName}"}`,
+                metadata: {
+                    language: currentLanguage
+                }
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideTyping();
+            if (data && data.length > 0) {
+                // Processa cada resposta do bot
+                data.forEach(response => {
+                    if (response.text) {
+                        appendMessage("bot", response.text);
+                    }
+                });
+            } else {
+                appendMessage("bot", "Não consegui obter os detalhes deste curso.");
+            }
+        })
+        .catch(error => {
+            hideTyping();
+            console.error("Erro:", error);
+            appendMessage("bot", `Desculpe, ocorreu um erro ao buscar detalhes: ${error.message}`);
+        });
     }
 
-    function showTypingIndicator() {
-      typingIndicatorElement = document.createElement("div");
-      typingIndicatorElement.className = "msg bot typing-indicator";
-      typingIndicatorElement.innerHTML = 'UAbBot is processing <span class="typing-spinner"></span>';
-      chat.appendChild(typingIndicatorElement);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    function removeTypingIndicator() {
-      if (typingIndicatorElement) {
-        chat.removeChild(typingIndicatorElement);
-        typingIndicatorElement = null;
+    function updateNotificationBadge() {
+      const existingBadge = document.querySelector(".notification-badge");
+      
+      if (hasNewMessage) {
+        if (!existingBadge) {
+          const badge = document.createElement("div");
+          badge.className = "notification-badge";
+          badge.textContent = "!";
+          openBot.appendChild(badge);
+        }
+      } else {
+        if (existingBadge) {
+          existingBadge.remove();
+        }
       }
     }
 
-    function sendMessage() {
+    function showTyping() {
+      if (isTyping) return;
+      isTyping = true;
+      
+      typingIndicator = document.createElement("div");
+      typingIndicator.className = "msg bot typing-indicator";
+      typingIndicator.innerHTML = 'UAbBot está digitando<span class="typing-cursor"></span>';
+      chat.appendChild(typingIndicator);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function hideTyping() {
+      if (!isTyping) return;
+      isTyping = false;
+      
+      if (typingIndicator) {
+        chat.removeChild(typingIndicator);
+        typingIndicator = null;
+      }
+    }
+
+    async function sendMessage() {
       const message = input.value.trim();
       if (!message) return;
 
       appendMessage("user", message);
       input.value = "";
-      showTypingIndicator();
+      showTyping();
 
-      fetch("http://localhost:5005/webhooks/rest/webhook", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sender: "user", message, language: currentLanguage })
-      })
-      .then(response => response.json())
-      .then(data => {
-        removeTypingIndicator();
-        if (!data || data.length === 0) {
-          appendMessage("bot", "No response.");
-          return;
-        }
+      try {
+        const response = await fetch("http://localhost:5005/webhooks/rest/webhook", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({ 
+            sender: "user_" + Date.now(),
+            message: message,
+            metadata: {
+              language: currentLanguage
+            }
+          })
+        });
 
-        const typingMsg = document.createElement("div");
-        typingMsg.className = "msg bot typing-indicator";
-        typingMsg.innerHTML = 'UAbBot is typing<span class="typing-cursor"></span>';
-        chat.appendChild(typingMsg);
-        chat.scrollTop = chat.scrollHeight;
+        if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
 
-        setTimeout(() => {
-          chat.removeChild(typingMsg);
-          data.forEach(res => {
-            appendMessage("bot", res.text || "[No text response]");
+        const data = await response.json();
+        hideTyping();
+        
+        if (data && data.length > 0) {
+          data.forEach(response => {
+            if (response.text) {
+              appendMessage("bot", response.text);
+            }
           });
-        }, 1000);
-      })
-      .catch(err => {
-        console.error(err);
-        removeTypingIndicator();
-        appendMessage("bot", "Error connecting to UAbBot.");
-      });
+        } else {
+          appendMessage("bot", "Não entendi. Poderia reformular?");
+        }
+      } catch (error) {
+        hideTyping();
+        console.error("Erro:", error);
+        appendMessage("bot", `Desculpe, ocorreu um erro: ${error.message}`);
+      }
     }
 
-    input.addEventListener("keypress", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        sendMessage();
+    // Event Listeners
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!emojiPicker.contains(e.target) && e.target.id !== "emojiBtn") {
+        emojiPicker.style.display = "none";
       }
     });
   </script>
-
 </body>
 </html>

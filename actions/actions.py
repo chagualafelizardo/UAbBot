@@ -5,6 +5,7 @@ from typing import Dict, Text, Any, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.events import SlotSet
+from difflib import SequenceMatcher  # Adicione no topo do arquivo
 
 class UAbCourseScraper:
     def __init__(self):
@@ -63,6 +64,8 @@ class UAbCourseScraper:
             all_courses.extend(courses)
         return all_courses
 
+#----------------------------------------------------------------------------------------
+# Accao para listar os cursos disponiveis
 class ActionSearchUAbCourses(Action):
     def name(self) -> Text:
         return "action_search_uab_courses"
@@ -126,3 +129,68 @@ class ActionSearchUAbCourses(Action):
             course_type=course_type,
             formatted_courses=formatted
         )
+
+#----------------------------------------------------------------------------------------
+# Nava accao para lidar com os detalhes dos cursos
+
+class ActionGetCourseDetails(Action):
+    def name(self) -> Text:
+        return "action_get_course_details"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+
+        # Extrai nome do curso do comando especial
+        course_name = tracker.latest_message.get("text", "").split('course_name":"')[-1].rstrip('"}')
+        
+        if not course_name:
+            dispatcher.utter_message(text="Não consegui identificar qual curso você quer ver os detalhes.")
+            return []
+
+        scraper = UAbCourseScraper()
+        all_courses = scraper.get_courses()
+        
+        # Busca exata (case insensitive)
+        matched_courses = [c for c in all_courses if course_name.lower() in c['nome'].lower()]
+        
+        if not matched_courses:
+            # Tenta encontrar cursos similares
+            similar_courses = [c for c in all_courses if fuzz.partial_ratio(course_name.lower(), c['nome'].lower()) > 80]
+            if similar_courses:
+                matched_courses = similar_courses[:1]  # Pega o mais similar
+            else:
+                dispatcher.utter_message(text=f"Não encontrei o curso '{course_name}'. Aqui está nossa lista de cursos:")
+                self._send_courses_list(dispatcher, "todos", all_courses[:5])  # Mostra os 5 primeiros
+                return []
+
+        course = matched_courses[0]
+        
+        try:
+            # Tenta obter detalhes do curso
+            details = self._get_course_details(course['url'])
+            
+            # Formata a mensagem com os detalhes
+            message = (
+                f"📚 <b>{course['nome']}</b> ({course['nivel']})\n\n"
+                f"🔗 <a href='{course['url']}' target='_blank'>Página oficial</a>\n\n"
+                f"📝 <b>Descrição:</b> {details.get('description', 'Informação não disponível')}\n\n"
+                f"⏳ <b>Duração:</b> {details.get('duration', 'Informação não disponível')}\n"
+                f"🎓 <b>Coordenação:</b> {details.get('coordinator', 'Informação não disponível')}\n"
+                f"📋 <b>Requisitos:</b> {details.get('requirements', 'Informação não disponível')}\n"
+            )
+            
+            dispatcher.utter_message(text=message)
+            
+        except Exception as e:
+            print(f"Error getting course details: {e}")
+            dispatcher.utter_message(
+                text=f"Aqui estão as informações básicas sobre {course['nome']}:\n\n"
+                     f"Tipo: {course['nivel']}\n"
+                     f"Mais informações: {course['url']}"
+            )
+        
+        return [SlotSet("course_name", course['nome'])]
+        
+#----------------------------------------------------------------------------------------
+# 
