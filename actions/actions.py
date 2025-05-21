@@ -1,71 +1,166 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from typing import Dict, Text, Any, List
+from typing import Dict, Text, Any, List, Optional
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.events import SlotSet
-from difflib import SequenceMatcher  # Adicione no topo do arquivo
 
 class UAbCourseScraper:
     def __init__(self):
         self.base_url = "https://guiadoscursos.uab.pt/"
         self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        })
-        self.course_types = {
-            'licenciatura': ('', 'Licenciatura'),
-            'mestrado': ('mestrados', 'Mestrado'),
-            'doutoramento': ('doutoramentos', 'Doutoramento')
+        self.session.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
 
-    def get_courses(self, course_type=None):
-        try:
-            if course_type and course_type.lower() in self.course_types:
-                path, level = self.course_types[course_type.lower()]
-                url = urljoin(self.base_url, path)
-                return self._scrape_courses(url, level)
-            else:
-                return self._scrape_all_courses()
-        except Exception as e:
-            print(f"Error scraping courses: {e}")
-            return []
-
-    def _scrape_courses(self, url, level):
-        try:
-            response = self.session.get(url, timeout=15)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
+    def get_courses(self, course_type: Optional[str] = None) -> List[Dict[str, str]]:
+        """Obtém cursos com base no tipo especificado"""
+        if not course_type:
+            return self._get_all_courses()
             
-            courses = []
-            for article in soup.find_all('article', class_=lambda x: x and 'col-sm-6' in x):
-                link = article.find('a')
-                if not link:
-                    continue
-                
-                title = link.get('title', '').strip() or link.text.strip()
-                if title:
-                    courses.append({
-                        'nome': title,
-                        'nivel': level,
-                        'url': urljoin(self.base_url, link['href'])
-                    })
-            return courses
-        except Exception as e:
-            print(f"Error scraping {url}: {e}")
+        if course_type == 'licenciatura':
+            return self._get_licenciaturas()
+        elif course_type == 'mestrado':
+            return self._get_mestrados()
+        elif course_type == 'doutoramento':
+            return self._get_doutoramentos()
+        else:
             return []
 
-    def _scrape_all_courses(self):
+    def _get_all_courses(self) -> List[Dict[str, str]]:
+        """Obtém todos os cursos de todos os tipos"""
         all_courses = []
-        for course_type, (path, level) in self.course_types.items():
-            url = urljoin(self.base_url, path)
-            courses = self._scrape_courses(url, level)
-            all_courses.extend(courses)
+        all_courses.extend(self._get_licenciaturas())
+        all_courses.extend(self._get_mestrados())
+        all_courses.extend(self._get_doutoramentos())
         return all_courses
 
-#----------------------------------------------------------------------------------------
-# Accao para listar os cursos disponiveis
+    def _get_licenciaturas(self) -> List[Dict[str, str]]:
+        """Obtém cursos de licenciatura"""
+        url = self.base_url
+        print(f"DEBUG: Acessando licenciaturas em: {url}")
+        
+        try:
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+            return self._parse_licenciaturas(response.text)
+        except Exception as e:
+            print(f"ERRO ao acessar licenciaturas: {str(e)}")
+            return []
+
+    def _get_mestrados(self) -> List[Dict[str, str]]:
+        """Obtém cursos de mestrado"""
+        url = urljoin(self.base_url, "mestrados/")
+        print(f"DEBUG: Acessando mestrados em: {url}")
+        
+        try:
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+            return self._parse_mestrados(response.text)
+        except Exception as e:
+            print(f"ERRO ao acessar mestrados: {str(e)}")
+            return []
+
+    def _get_doutoramentos(self) -> List[Dict[str, str]]:
+        """Obtém cursos de doutoramento"""
+        url = urljoin(self.base_url, "doutoramentos/")
+        print(f"DEBUG: Acessando doutoramentos em: {url}")
+        
+        try:
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+            return self._parse_doutoramentos(response.text)
+        except Exception as e:
+            print(f"ERRO ao acessar doutoramentos: {str(e)}")
+            return []
+
+    def _parse_licenciaturas(self, html: str) -> List[Dict[str, str]]:
+        """Analisa o HTML das licenciaturas"""
+        soup = BeautifulSoup(html, 'html.parser')
+        courses = []
+        
+        # Para licenciaturas
+        cards = soup.find_all('article', class_=lambda x: x and 'col-sm-6' in x)
+        
+        for card in cards:
+            link = card.find('a')
+            if not link:
+                continue
+                
+            title = link.get('title', '').strip() or link.text.strip()
+            if not title:
+                continue
+                
+            courses.append({
+                'nome': title,
+                'nivel': 'Licenciatura',
+                'url': urljoin(self.base_url, link['href'])
+            })
+            
+        print(f"DEBUG: Encontradas {len(courses)} licenciaturas")
+        return courses
+
+    def _parse_mestrados(self, html: str) -> List[Dict[str, str]]:
+        """Analisa o HTML dos mestrados"""
+        soup = BeautifulSoup(html, 'html.parser')
+        courses = []
+        
+        # Para mestrados
+        cards = soup.find_all('article', class_='col-sm-6 col-md-4 col-lg-3')
+        
+        for card in cards:
+            link = card.find('a')
+            if not link:
+                continue
+                
+            title_element = card.find('h4', class_='courses-text')
+            if not title_element:
+                continue
+                
+            title = title_element.get_text(strip=True)
+            if not title:
+                continue
+                
+            courses.append({
+                'nome': title,
+                'nivel': 'Mestrado',
+                'url': urljoin(self.base_url, link['href'])
+            })
+            
+        print(f"DEBUG: Encontrados {len(courses)} mestrados")
+        return courses
+
+    def _parse_doutoramentos(self, html: str) -> List[Dict[str, str]]:
+        """Analisa o HTML dos doutoramentos"""
+        soup = BeautifulSoup(html, 'html.parser')
+        courses = []
+        
+        # Para doutoramentos
+        cards = soup.find_all('article', class_='col-sm-6 col-md-4 col-lg-3')
+        
+        for card in cards:
+            link = card.find('a')
+            if not link:
+                continue
+                
+            title_element = card.find('h4', class_='courses-text')
+            if not title_element:
+                continue
+                
+            title = title_element.get_text(strip=True)
+            if not title:
+                continue
+                
+            courses.append({
+                'nome': title,
+                'nivel': 'Doutoramento',
+                'url': urljoin(self.base_url, link['href'])
+            })
+            
+        print(f"DEBUG: Encontrados {len(courses)} doutoramentos")
+        return courses
+
 class ActionSearchUAbCourses(Action):
     def name(self) -> Text:
         return "action_search_uab_courses"
@@ -73,65 +168,57 @@ class ActionSearchUAbCourses(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        message = tracker.latest_message.get('text', '').lower()
+        course_type = self._detect_course_type(message)
+        
+        print(f"\n[DEBUG] Mensagem: {message}")
+        print(f"[DEBUG] Tipo detectado: {course_type}\n")
 
-        # Extrai entidades
-        course_type = next(tracker.get_latest_entity_values("course_type"), None)
-        course_name = next(tracker.get_latest_entity_values("course_name"), None)
-        
-        scraper = UAbCourseScraper()
-        
-        if course_name:
-            # Busca específica por nome do curso
-            all_courses = scraper.get_courses()
-            matched_courses = [c for c in all_courses if course_name.lower() in c['nome'].lower()]
-            
-            if matched_courses:
-                course = matched_courses[0]
-                dispatcher.utter_message(
-                    response="utter_specific_course_info",
-                    course_name=course['nome'],
-                    course_level=course['nivel'],
-                    course_url=course['url']
-                )
-            else:
-                dispatcher.utter_message(response="utter_course_not_found")
-                courses_to_show = all_courses[:10]  # Mostra os 10 primeiros
-                self._send_courses_list(dispatcher, "todos", courses_to_show)
-                
-            return [SlotSet("course_name", course_name if matched_courses else None),
-                    SlotSet("course_type", matched_courses[0]['nivel'].lower() if matched_courses else None)]
-        
-        elif course_type:
-            # Busca por tipo de curso
-            courses = scraper.get_courses(course_type)
-            if courses:
-                self._send_courses_list(dispatcher, course_type, courses)
-            else:
-                dispatcher.utter_message(text=f"Não encontrei cursos do tipo {course_type}.")
-            return [SlotSet("course_type", course_type)]
-        
-        else:
-            # Sem entidades específicas - pede mais informações
+        if not course_type:
             dispatcher.utter_message(response="utter_ask_course_type")
             return []
 
-    def _send_courses_list(self, dispatcher, course_type, courses):
-        formatted = "\n".join(
-            f"- {i+1}. {c['nome']} ({c['nivel']})" 
-            for i, c in enumerate(courses[:10])  # Limita a 10 cursos
-        )
-        
-        if len(courses) > 10:
-            formatted += f"\n\nMostrando 10 de {len(courses)} cursos encontrados."
-        
-        dispatcher.utter_message(
-            response="utter_courses_list",
-            course_type=course_type,
-            formatted_courses=formatted
-        )
+        scraper = UAbCourseScraper()
+        courses = scraper.get_courses(course_type)
 
-#----------------------------------------------------------------------------------------
-# Nava accao para lidar com os detalhes dos cursos
+        if not courses:
+            dispatcher.utter_message(text=f"Não encontrei cursos de {course_type}.")
+            return [SlotSet("course_type", None)]
+        
+        # Mostra os cursos com botões de detalhes
+        for i, course in enumerate(courses[:5], 1):
+            dispatcher.utter_message(
+                text=f"{i}. {course['nome']} ({course['nivel']})",
+                buttons=[
+                    {
+                        "title": "🔍 Ver Detalhes",
+                        "payload": f'/get_course_details{{"course_name":"{course["nome"]}","course_url":"{course["url"]}"}}'
+                    },
+                    {
+                        "title": "🌐 Abrir Página",
+                        "url": course['url'],
+                        "type": "web_url"
+                    }
+                ]
+            )
+        
+        if len(courses) > 5:
+            dispatcher.utter_message(
+                text=f"Mostrando 5 de {len(courses)} cursos. Pesquise pelo nome para mais."
+            )
+        
+        return [SlotSet("course_type", course_type)]
+
+    def _detect_course_type(self, message: str) -> Optional[str]:
+        """Detecta o tipo de curso com base na mensagem"""
+        if any(w in message for w in ['licenciatura', 'licenciaturas', 'lic']):
+            return 'licenciatura'
+        elif any(w in message for w in ['mestrado', 'mestrados', 'mest']):
+            return 'mestrado'
+        elif any(w in message for w in ['doutoramento', 'doutoramentos', 'dout']):
+            return 'doutoramento'
+        return None
 
 class ActionGetCourseDetails(Action):
     def name(self) -> Text:
@@ -140,57 +227,51 @@ class ActionGetCourseDetails(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-
-        # Extrai nome do curso do comando especial
-        course_name = tracker.latest_message.get("text", "").split('course_name":"')[-1].rstrip('"}')
         
-        if not course_name:
-            dispatcher.utter_message(text="Não consegui identificar qual curso você quer ver os detalhes.")
+        # Obtém o nome e URL do curso dos slots ou da mensagem
+        course_name = tracker.get_slot("course_name") or \
+                     next(tracker.get_latest_entity_values("course_name"), None)
+        
+        course_url = tracker.get_slot("course_url") or \
+                     next(tracker.get_latest_entity_values("course_url"), None)
+
+        if not course_name and not course_url:
+            dispatcher.utter_message(text="Qual curso deseja ver os detalhes?")
             return []
 
-        scraper = UAbCourseScraper()
-        all_courses = scraper.get_courses()
-        
-        # Busca exata (case insensitive)
-        matched_courses = [c for c in all_courses if course_name.lower() in c['nome'].lower()]
-        
-        if not matched_courses:
-            # Tenta encontrar cursos similares
-            similar_courses = [c for c in all_courses if fuzz.partial_ratio(course_name.lower(), c['nome'].lower()) > 80]
-            if similar_courses:
-                matched_courses = similar_courses[:1]  # Pega o mais similar
-            else:
-                dispatcher.utter_message(text=f"Não encontrei o curso '{course_name}'. Aqui está nossa lista de cursos:")
-                self._send_courses_list(dispatcher, "todos", all_courses[:5])  # Mostra os 5 primeiros
+        # Se não temos URL, tentamos encontrar pelo nome
+        if not course_url:
+            scraper = UAbCourseScraper()
+            all_courses = scraper.get_courses()
+            matched = [c for c in all_courses if course_name and course_name.lower() in c['nome'].lower()]
+            
+            if not matched:
+                dispatcher.utter_message(text=f"Curso '{course_name}' não encontrado.")
                 return []
+            
+            course_url = matched[0]['url']
+            course_name = matched[0]['nome']
 
-        course = matched_courses[0]
+        # Monta a mensagem com o link direto
+        message = (
+            f"📘 <b>{course_name}</b>\n\n"
+            f"🌐 Acesse a página completa do curso para todas as informações:\n"
+            f"{course_url}"
+        )
+
+        dispatcher.utter_message(
+            text=message,
+            buttons=[
+                {
+                    "title": "Abrir Página do Curso",
+                    "url": course_url,
+                    "type": "web_url"
+                },
+                {
+                    "title": "Voltar para lista de cursos",
+                    "payload": "/search_courses"
+                }
+            ]
+        )
         
-        try:
-            # Tenta obter detalhes do curso
-            details = self._get_course_details(course['url'])
-            
-            # Formata a mensagem com os detalhes
-            message = (
-                f"📚 <b>{course['nome']}</b> ({course['nivel']})\n\n"
-                f"🔗 <a href='{course['url']}' target='_blank'>Página oficial</a>\n\n"
-                f"📝 <b>Descrição:</b> {details.get('description', 'Informação não disponível')}\n\n"
-                f"⏳ <b>Duração:</b> {details.get('duration', 'Informação não disponível')}\n"
-                f"🎓 <b>Coordenação:</b> {details.get('coordinator', 'Informação não disponível')}\n"
-                f"📋 <b>Requisitos:</b> {details.get('requirements', 'Informação não disponível')}\n"
-            )
-            
-            dispatcher.utter_message(text=message)
-            
-        except Exception as e:
-            print(f"Error getting course details: {e}")
-            dispatcher.utter_message(
-                text=f"Aqui estão as informações básicas sobre {course['nome']}:\n\n"
-                     f"Tipo: {course['nivel']}\n"
-                     f"Mais informações: {course['url']}"
-            )
-        
-        return [SlotSet("course_name", course['nome'])]
-        
-#----------------------------------------------------------------------------------------
-# 
+        return [SlotSet("course_name", course_name), SlotSet("course_url", course_url)]

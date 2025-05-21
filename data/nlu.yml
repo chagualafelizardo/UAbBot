@@ -152,3 +152,27 @@ nlu:
     - Lecenciatura em gestao
     - Mestrado em psicologia
     - Pos graduação em matematica
+    - mestrado
+    - quero mestrado
+    - estou interessado em um mestrado
+    - mestrados
+    - [licenciatura](course_type)
+    - [licenciaturas](course_type)
+    - [mestrado](course_type)
+    - [mestrados](course_type)
+    - [doutoramento](course_type)
+    - [doutoramentos](course_type)
+    - cursos de [mestrado](course_type)
+    - lista de [doutoramentos](course_type)
+      [mestrado](course_type)
+    - cursos de [doutoramento](course_type)
+    - [licenciatura](course_type)
+    - [licenciatura](course_type)
+    - [licenciaturas](course_type)
+    - [mestrado](course_type)
+    - [mestrados](course_type)
+    - [doutoramento](course_type)
+    - [doutoramentos](course_type)
+    - quero [mestrado](course_type)
+    - mostrar [doutoramentos](course_type)
+    - lista de [licenciaturas](course_type)

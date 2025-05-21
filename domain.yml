@@ -73,9 +73,10 @@ responses:
       image: "https://i.imgur.com/nGF1K8f.jpg"
   
   utter_courses_list:
-    - text: |
-          Aqui estão alguns cursos de {course_type} disponíveis:
-          {formatted_courses}
+    - text: "Aqui estão alguns cursos de {course_type} disponíveis:\n{formatted_courses}"
+      buttons:
+        - title: "Ver Detalhes"
+          payload: "/get_course_details"
 
   utter_specific_course_info:
     - text: |
@@ -86,8 +87,14 @@ responses:
           Não encontrei nenhum curso com esse nome. Aqui estão outras opções:
 
   utter_ask_course_type:
-    - text: |
-        Que tipo de curso está à procura? Licenciatura, Mestrado ou Doutoramento?
+    - text: "Que tipo de curso está à procura? (Licenciatura, Mestrado ou Doutoramento)"
+      buttons:
+      - title: "Licenciatura"
+        payload: '/inform{"course_type":"licenciatura"}'
+      - title: "Mestrado"
+        payload: '/inform{"course_type":"mestrado"}'
+      - title: "Doutoramento"
+        payload: '/inform{"course_type":"doutoramento"}'
 
   utter_course_details:
     - text: "Aqui estão os detalhes completos do curso:\n\n{details}"
