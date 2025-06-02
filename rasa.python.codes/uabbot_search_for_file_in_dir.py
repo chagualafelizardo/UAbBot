@@ -4,7 +4,7 @@ from typing import List, Dict
 
 class CursoExtractor:
     def __init__(self):
-        self.file_path = r'C:\Users\Felizardo Chaguala\Desktop\Rasa\UAbBot\rasa.uabbot.files\CursosUAB.docx'
+        self.file_path = r'C:\Users\Felizardo Chaguala\Desktop\Rasa\UAbBot\rasa.uabbot.files\conhecer-a-uab\conhecer-a-uab.docx'
     
     def extract_cursos_por_tipo(self) -> Dict[str, List[str]]:
         try:

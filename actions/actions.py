@@ -160,7 +160,8 @@ class UAbCourseScraper:
             
         print(f"DEBUG: Encontrados {len(courses)} doutoramentos")
         return courses
-
+    
+# -------------------------------------------------------------------
 class ActionSearchUAbCourses(Action):
     def name(self) -> Text:
         return "action_search_uab_courses"
@@ -219,7 +220,8 @@ class ActionSearchUAbCourses(Action):
         elif any(w in message for w in ['doutoramento', 'doutoramentos', 'dout']):
             return 'doutoramento'
         return None
-
+    
+# -------------------------------------------------------------------
 class ActionGetCourseDetails(Action):
     def name(self) -> Text:
         return "action_get_course_details"
@@ -275,3 +277,59 @@ class ActionGetCourseDetails(Action):
         )
         
         return [SlotSet("course_name", course_name), SlotSet("course_url", course_url)]
+    
+# -------------------------------------------------------------------
+# Informacao sobre a uab ...
+class ActionBuscarInfoUAb(Action):
+    def name(self) -> str:
+        return "action_buscar_info_uab"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+        # Tenta obter o tópico de diferentes formas
+        topico = tracker.get_slot("topico")
+        
+        # Se não estiver no slot, tenta pegar da última mensagem do usuário
+        if not topico:
+            last_user_message = next(
+                (event.get('text') for event in reversed(tracker.events) 
+                 if event.get('event') == 'user'),
+                None
+            )
+            if last_user_message:
+                topico = last_user_message.lower().replace("fala-me sobre", "").strip()
+        
+        # Se ainda não encontrou, pede para especificar
+        if not topico:
+            dispatcher.utter_message(text="Por favor, diga qual tópico deseja saber sobre a UAb.")
+            return []
+
+        # Mapeamento de tópicos para URLs ou seções específicas
+        topicos_uab = {
+            "história": "A UAb",
+            "fundação": "A UAb",
+            "reitoria": "Reitoria",
+            "organização": "Organização",
+            "honoris causa": "Doutorados Honoris Causa",
+            # Adicione outros mapeamentos conforme necessário
+        }
+
+        # Normaliza o tópico
+        topico_normalizado = topicos_uab.get(topico.lower(), topico)
+
+        scraper = UAbInfoScraper()
+        info = scraper.get_uab_info(topico_normalizado)
+
+        if info and info.get("content"):
+            resposta = (
+                f"📘 **{info['title']}**\n\n"
+                f"{info['content']}\n\n"
+                f"🔗 Mais detalhes: {info['url']}"
+            )
+            dispatcher.utter_message(text=resposta)
+        else:
+            dispatcher.utter_message(text=f"Desculpe, não encontrei informações sobre '{topico}'. Posso ajudar com informações sobre: história, reitoria, organização, ou outros tópicos da UAb.")
+
+        return []

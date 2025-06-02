@@ -46,3 +46,31 @@ rules:
     steps:
       - intent: ask_uab_courses
       - action: action_search_uab_courses
+
+  - rule: Responder sobre história da UAb
+    steps:
+    - intent: ask_history
+    - action: action_get_uab_info
+
+  - rule: Responder sobre missão da UAb
+    steps:
+    - intent: ask_mission
+    - action: action_get_uab_info
+
+  - rule: Responder sobre contactos da UAb
+    steps:
+    - intent: ask_contact
+    - action: action_get_uab_info
+
+  - rule: Pergunta geral sobre UAb
+    steps:
+    - intent: ask_about_uab
+    - action: utter_ask_uab_topic
+  
+  - rule: Responder a perguntas sobre a UAb
+    steps:
+    - intent: perguntar_info_uab
+    - action: utter_perguntar_info_uab
+    - action: action_buscar_info_uab
+
+    

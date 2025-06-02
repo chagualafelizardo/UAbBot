@@ -5,7 +5,8 @@
 https://rasa.com/docs/pro/installation/docker/
 # Para criar um projecto novo no RASA usando o docker
 docker run -it --rm -v ${PWD}:/app rasa/rasa init --no-prompt
-docker run -it --rm -v ${PWD}:/app rasa/rasa train
+docker run -it --rm -v ${PWD}:/app rasa/rasa train; docker run -it --rm -v ${PWD}:/app rasa/rasa shell nlu
+
 docker run -it --rm -v ${PWD}:/app rasa/rasa shell nlu
 
 # Aqui vou corer o servidor principal rasa
@@ -46,3 +47,31 @@ docker-compose run rasa rasa shell nlu
 
 # Quando tenho erro na atualizacao dos arquivos no github
 git push -u origin main –force 
+
+
+# 27/05/2025
+
+No que posso ajudar hoje? Você quer:
+
+    Refinar as respostas do UAbBot para torná-lo mais preciso?
+
+    Adicionar novas funcionalidades, como integração com APIs ou banco de dados?
+
+    Melhorar o NLP (Processamento de Linguagem Natural) para entender melhor os usuários?
+
+    Testar e depurar algum fluxo de conversa específico?
+
+# 28/05/2025
+    Definir intenções e entidades.
+
+    Treinar um modelo (Rasa, LLM, etc.).
+
+    Implementar o backend do chatbot.
+
+    Conectar a um canal (Telegram, Web, WhatsApp, etc.).
+
+    Integrar com uma base de dados ou sistema externo.
+
+    Criar diálogos e fluxos de conversação.
+
+    Usar RAG ou modelos como RoBERTa, GPT, etc.

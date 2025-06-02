@@ -25,3 +25,44 @@ stories:
     - action: utter_mood_unhappy  # Alterado para usar a resposta específica
     - intent: deny
     - action: utter_deny  # Alterado para usar a resposta específica
+
+  - story: Mostrar detalhes do curso
+    steps:
+    - intent: informar_curso
+      entities:
+      - curso_nome
+      - curso_url
+    - action: action_show_course_details
+    
+  # Sobre a uab
+  - story: Perguntas sobre a UAb
+    steps:
+    - intent: ask_about_uab
+    - action: utter_ask_uab_topic
+    - intent: inform
+      entities:
+      - uab_topic: "historia"
+    - action: action_get_uab_info
+
+  - story: História da UAb
+    steps:
+    - intent: ask_history
+    - action: action_get_uab_info
+
+  - story: Missão da UAb
+    steps:
+    - intent: ask_mission
+    - action: action_get_uab_info
+
+  - story: Contactos da UAb
+    steps:
+    - intent: ask_contact
+    - action: action_get_uab_info
+
+  - story: Perguntar sobre a missão da UAb
+    steps:
+    - intent: perguntar_info_uab
+      entities:
+        - topico: "topico"
+    - action: utter_perguntar_info_uab
+    - action: action_buscar_info_uab

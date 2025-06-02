@@ -176,3 +176,65 @@ nlu:
     - quero [mestrado](course_type)
     - mostrar [doutoramentos](course_type)
     - lista de [licenciaturas](course_type)
+
+# Informacao sobre a uab ...
+- intent: ask_about_uab
+  examples: |
+    - Fala-me sobre a UAb
+    - O que é a Universidade Aberta?
+    - Quero saber mais sobre a UAb
+    - Informações sobre a universidade
+    - Dados sobre a UAb
+
+- intent: ask_history
+  examples: |
+    - Qual é a história da UAb?
+    - Quando foi fundada a Universidade Aberta?
+    - História da universidade
+    - Ano de fundação da UAb
+
+- intent: ask_mission
+  examples: |
+    - Qual é a missão da UAb?
+    - Objectivos da Universidade Aberta
+    - Princípios da UAb
+    - Visão da universidade
+
+- intent: ask_contact
+  examples: |
+    - Como contactar a UAb?
+    - Qual é o telefone da universidade?
+    - Morada da UAb
+    - Email de contacto
+
+- intent: ask_services
+  examples: |
+    - Que serviços oferece a UAb?
+    - Plataforma de e-learning
+    - Biblioteca digital
+    - Serviços para estudantes
+
+- intent: ask_international
+  examples: |
+    - A UAb tem parcerias internacionais?
+    - Programas de intercâmbio
+    - Universidades parceiras
+    - Cooperação internacional
+
+- intent: ask_research
+  examples: |
+    - Áreas de investigação da UAb
+    - Centros de pesquisa
+    - Projetos científicos
+    - Investigação na universidade
+
+- intent: perguntar_info_uab
+  examples: |
+    - Fala-me sobre a história da UAb
+    - Qual é a missão da Universidade Aberta?
+    - O que é a UAb?
+    - Onde fica a reitoria?
+    - Como é a organização da UAb?
+    - Quero saber os contactos da UAb
+    - Dá-me informações gerais da UAb
+    - Onde posso encontrar os contactos da universidade?

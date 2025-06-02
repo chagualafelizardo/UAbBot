@@ -10,6 +10,15 @@ intents:
   - bot_challenge
   - nlu_fallback
   - ask_uab_courses
+  - informar_curso
+  - ask_about_uab
+  - ask_history
+  - ask_mission
+  - ask_contact
+  - ask_services
+  - ask_international
+  - ask_research
+  - perguntar_info_uab
 
 entities:
   - course_type:
@@ -25,6 +34,10 @@ entities:
         - psicologia: Psicologia
         - gestao: Gestão
         - matematica: Matemática
+  - curso_nome
+  - curso_url
+  - uab_topic
+  - topico
 
 slots:
   course_type:
@@ -32,12 +45,32 @@ slots:
     influence_conversation: true
     mappings:
       - type: from_text
+
   course_name:
     type: text
     influence_conversation: true
     mappings:
       - type: from_text
 
+  curso_nome:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: curso_nome
+
+  curso_url:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: curso_url
+
+  topico:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: topico
+        
 responses:
   utter_greet:
     - text: "Bom dia! Em que posso ajudar hoje?"
@@ -99,10 +132,31 @@ responses:
   utter_course_details:
     - text: "Aqui estão os detalhes completos do curso:\n\n{details}"
 
+  utter_ask_uab_topic:
+    - text: "Sobre qual aspecto da UAb gostaria de saber?"
+      buttons:
+      - title: "História"
+        payload: '/inform{"uab_topic":"historia"}'
+      - title: "Missão"
+        payload: '/inform{"uab_topic":"missao"}'
+      - title: "Contactos"
+        payload: '/inform{"uab_topic":"contactos"}'
+      - title: "Serviços"
+        payload: '/inform{"uab_topic":"servicos"}'
+
+  utter_uab_info:
+    - text: "{uab_info}"
+
+  utter_perguntar_info_uab:
+    - text: "Já vou buscar as informações sobre '{topico}'. Um momento..."
+
 actions:
   - action_fallback_web_search
   - action_search_uab_courses
   - action_get_course_details
+  - action_show_course_details
+  - action_get_uab_info
+  - action_buscar_info_uab
 
 session_config:
   session_expiration_time: 60
