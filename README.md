@@ -30,6 +30,8 @@ pip install fuzzywuzzy python-Levenshtein
 
 
 # Para correr o UAbBot junto de todos os servicos e container basta
+docker-compose down; docker-compose up -d; docker-compose logs -f
+docker-compose build --no-cache
 docker-compose up --build 
 docker-compose up -d
 
@@ -49,29 +51,23 @@ docker-compose run rasa rasa shell nlu
 git push -u origin main –force 
 
 
+# Documentacao de alguns bugs
+
+3. Problema no rasa_db_setup (que cai após execução)
+Isso é esperado - o db_setup deve finalizar após popular o banco. Para mantê-lo ativo:
+
+# TOBE
 # 27/05/2025
-
-No que posso ajudar hoje? Você quer:
-
-    Refinar as respostas do UAbBot para torná-lo mais preciso?
-
     Adicionar novas funcionalidades, como integração com APIs ou banco de dados?
-
     Melhorar o NLP (Processamento de Linguagem Natural) para entender melhor os usuários?
-
     Testar e depurar algum fluxo de conversa específico?
 
 # 28/05/2025
     Definir intenções e entidades.
-
     Treinar um modelo (Rasa, LLM, etc.).
-
     Implementar o backend do chatbot.
-
     Conectar a um canal (Telegram, Web, WhatsApp, etc.).
-
     Integrar com uma base de dados ou sistema externo.
-
     Criar diálogos e fluxos de conversação.
-
     Usar RAG ou modelos como RoBERTa, GPT, etc.
+

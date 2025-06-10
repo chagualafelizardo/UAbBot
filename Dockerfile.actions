@@ -1,5 +1,25 @@
-FROM rasa/rasa-sdk:3.6.2
+FROM python:3.10-slim
 
-USER root
-RUN pip install --no-cache-dir beautifulsoup4 requests
-USER 1001
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    libpq-dev \
+    wget \
+    curl \
+    gnupg2 \
+    ca-certificates \
+    postgresql-client \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip setuptools
+
+COPY ./actions /app/actions
+COPY ./scripts /app/scripts
