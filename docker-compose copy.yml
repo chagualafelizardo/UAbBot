@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  postgres: # Servicos do postgres
+  postgres:
     image: postgres:13
     container_name: rasa_postgres
     env_file: .env
@@ -21,7 +21,7 @@ services:
       timeout: 5s
       retries: 30
 
-  pgadmin:  # Serviço pgadmin para o acesso a base de dados rasa via ambiente / interface grafica
+  pgadmin:  # Serviço adicionado aqui
     image: dpage/pgadmin4
     container_name: rasa_pgadmin
     environment:
@@ -120,15 +120,6 @@ services:
       - rasa
     command: ["run", "--enable-api", "--cors", "*", "--debug", "-p", "8000"]
 
-  web_server:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
-    volumes:
-      - ./web:/usr/share/nginx/html
-    depends_on:
-      - rasa_web
-      
 volumes:
   postgres_data:
   pgadmin_data:  # Volume adicionado para persistência do pgAdmin

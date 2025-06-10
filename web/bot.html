@@ -172,11 +172,12 @@
       border-top: 1px solid #ccc;
       background-color: white;
       padding: 10px;
+      gap: 8px;
     }
 
     #userInput {
       border: 1px solid #ddd;
-      padding: 8px;
+      padding: 8px 12px;
       flex: 1;
       border-radius: 20px;
       outline: none;
@@ -184,18 +185,56 @@
 
     #bottomBar {
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-end; /* Alinha à direita */
       background-color: #f5f7fa;
       padding: 8px 10px;
       border-top: 1px solid #ddd;
+      gap: 8px; /* Espaço entre os ícones */
     }
 
     #emojiBtn, #clearBtn, #sendBtn {
-      background: none;
       border: none;
       cursor: pointer;
-      font-size: 20px;
-      padding: 5px;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    #emojiBtn:hover, #clearBtn:hover {
+      transform: scale(1.1);
+    }
+
+    #emojiBtn {
+      background: rgba(0, 123, 255, 0.1);
+    }
+
+    #emojiBtn:hover {
+      background: rgba(0, 123, 255, 0.2);
+    }
+
+    #clearBtn {
+      background: rgba(220, 53, 69, 0.1);
+    }
+
+    #clearBtn:hover {
+      background: rgba(220, 53, 69, 0.2);
+    }
+
+    #sendBtn {
+      background: #007bff;
+    }
+
+    #sendBtn:hover {
+      background: #0069d9;
+    }
+
+    /* Ajuste de tamanho dos SVGs */
+    #bottomBar svg {
+      width: 18px;
+      height: 18px;
     }
 
     #sendBtn {
@@ -203,9 +242,11 @@
       border-radius: 50%;
       width: 32px;
       height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    }
+
+    #sendBtn:hover {
+      background: #0069d9;
+      transform: scale(1.05);
     }
 
     #sendBtn svg {
@@ -332,7 +373,7 @@
       <button id="emojiBtn" onclick="toggleEmojiPicker()">😊</button>
       <button id="clearBtn" onclick="clearChat()" title="Limpar chat">🧹</button>
       <button id="sendBtn" onclick="sendMessage()" title="Enviar mensagem">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white">
           <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
         </svg>
       </button>

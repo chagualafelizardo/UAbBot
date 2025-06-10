@@ -50,9 +50,13 @@ docker-compose run rasa rasa shell nlu
 # Quando tenho erro na atualizacao dos arquivos no github
 git push -u origin main –force 
 
+# Configuracao para acessar a base de dados do rasa no ambiente grafico
+Todos os passos sao semelhantes, apenas este onde no Host name/address deves colocar este parametro {rasa_postgres}
+
+PGADMIN_DEFAULT_EMAIL: pgadmin4@pgadmin.org
+PGADMIN_DEFAULT_PASSWORD: postgres
 
 # Documentacao de alguns bugs
-
 3. Problema no rasa_db_setup (que cai após execução)
 Isso é esperado - o db_setup deve finalizar após popular o banco. Para mantê-lo ativo:
 
