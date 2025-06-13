@@ -120,7 +120,7 @@ responses:
           Não encontrei nenhum curso com esse nome. Aqui estão outras opções:
 
   utter_ask_course_type:
-    - text: "Que tipo de curso está à procura? (Licenciatura, Mestrado ou Doutoramento)"
+    - text: "Que tipo de curso está à procura? Licenciatura, Mestrado ou Doutoramento"
       buttons:
       - title: "Licenciatura"
         payload: '/inform{"course_type":"licenciatura"}'

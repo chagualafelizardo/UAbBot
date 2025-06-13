@@ -5,3 +5,4 @@ setuptools>=65.5.1
 numpy>=1.24.0
 psycopg2-binary>=2.9.0
 rasa-sdk==3.6.2
+pymongo>=4.6.0
