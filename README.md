@@ -30,7 +30,7 @@ pip install fuzzywuzzy python-Levenshtein
 
 
 # Para correr o UAbBot junto de todos os servicos e container basta
-docker-compose down; docker-compose up -d; docker-compose logs -f
+docker-compose down; docker-compose up -d --build; docker-compose logs -f
 docker-compose build --no-cache
 docker-compose up --build 
 docker-compose up -d
@@ -75,3 +75,5 @@ Isso é esperado - o db_setup deve finalizar após popular o banco. Para mantê-
     Criar diálogos e fluxos de conversação.
     Usar RAG ou modelos como RoBERTa, GPT, etc.
 
+# https://gapae.uab.pt/perguntas-frequentes/ 
+# https://portal.uab.pt/dsd/faqs-2/
