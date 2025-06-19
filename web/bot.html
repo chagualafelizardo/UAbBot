@@ -52,7 +52,7 @@
       flex-direction: column;
       overflow: hidden;
       z-index: 999;
-      height: 500px; /* Altura inicial */
+      height: 500px;
     }
 
     #chatContainer.active {
@@ -95,15 +95,14 @@
     }
 
     #chat {
-      height: 300px; /* Altura fixa */
-      overflow-y: auto; /* Sempre mostra barra de rolagem quando necessário */
+      height: 300px;
+      overflow-y: auto;
       padding: 15px;
       display: flex;
       flex-direction: column;
-      gap: 10px; /* Espaço entre mensagens */
+      gap: 10px;
     }
 
-    /* Estilização melhorada da barra de rolagem */
     #chat::-webkit-scrollbar {
       width: 8px;
     }
@@ -185,11 +184,11 @@
 
     #bottomBar {
       display: flex;
-      justify-content: flex-end; /* Alinha à direita */
+      justify-content: flex-end;
       background-color: #f5f7fa;
       padding: 8px 10px;
       border-top: 1px solid #ddd;
-      gap: 8px; /* Espaço entre os ícones */
+      gap: 8px;
     }
 
     #emojiBtn, #clearBtn, #sendBtn {
@@ -231,7 +230,6 @@
       background: #0069d9;
     }
 
-    /* Ajuste de tamanho dos SVGs */
     #bottomBar svg {
       width: 18px;
       height: 18px;
@@ -321,19 +319,60 @@
     }
 
     .details-btn {
-      background-color: #007bff;
-      color: white;
-      border: none;
+      background-color: transparent;
+      color: #007bff;
+      border: 1px solid #007bff;
       padding: 5px 10px;
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
       margin-top: 8px;
-      transition: background-color 0.3s;
+      transition: all 0.2s ease;
     }
 
     .details-btn:hover {
-      background-color: #0056b3;
+      background-color: rgba(200, 230, 255, 0.5); /* Azul um pouco mais intenso */
+    }
+
+    .option-btn {
+      background-color: transparent;
+      color: #333;
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .option-btn:hover {
+      background-color: rgba(200, 230, 255, 0.3); /* Azul muito claro e transparente */
+      border-color: #bbb;
+    }
+
+    .menu-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .menu-btn {
+      background-color: transparent;
+      color: #333;
+      border: 1px solid #ddd;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+      margin: 4px 0;
+      width: 100%;
+    }
+
+    .menu-btn:hover {
+      background-color: rgba(200, 230, 255, 0.3); /* Azul muito claro e transparente */
+      border-color: #bbb;
     }
 
     @keyframes blink {
@@ -396,6 +435,7 @@
     let typingIndicator = null;
     let isTyping = false;
     let hasNewMessage = false;
+    let hasShownWelcome = false;
 
     // Emojis disponíveis
     const emojis = [
@@ -412,12 +452,6 @@
       "🎃", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾"
     ];
 
-    
-    // Inicialização
-    document.addEventListener("DOMContentLoaded", function() {
-      appendMessage("bot", "Olá! Eu sou o UAbBot, o seu assistente virtual. Como posso ajudar você hoje? 👋");
-    });
-
     // Funções
     function toggleLanguage() {
       currentLanguage = currentLanguage === 'en' ? 'pt' : 'en';
@@ -433,7 +467,104 @@
       if (chatContainer.classList.contains("active")) {
         hasNewMessage = false;
         updateNotificationBadge();
+        
+        // Mostra mensagem de boas-vindas apenas na primeira vez
+        if (!hasShownWelcome) {
+          showTyping();
+          setTimeout(() => {
+            hideTyping();
+            showWelcomeMessage();
+          }, 800);
+          hasShownWelcome = true;
+        }
       }
+    }
+
+    function showWelcomeMessage() {
+      const welcomeMsg = document.createElement("div");
+      welcomeMsg.className = "msg bot";
+      welcomeMsg.innerHTML = `
+        <p>Olá! Eu sou o UAbBot, o seu assistente virtual. Como posso ajudar você hoje? 👋</p>
+        <p>O que deseja saber?</p>
+        <div class="menu-options">
+          <button class="menu-btn" onclick="sendMenuOption('admission_info')">1. Admissão</button>
+          <button class="menu-btn" onclick="sendMenuOption('enrollment_info')">2. Matrículas</button>
+          <button class="menu-btn" onclick="sendMenuOption('tuition_info')">3. Propinas</button>
+          <button class="menu-btn" onclick="sendMenuOption('academic_support')">4. Apoio Académico</button>
+          <button class="menu-btn" onclick="sendMenuOption('ask_uab_courses')">5. Cursos</button>
+          <button class="menu-btn" onclick="sendMenuOption('scholarship_info')">6. Bolsas</button>
+          <button class="menu-btn" onclick="sendMenuOption('research_info')">7. Investigação</button>
+        </div>
+      `;
+      chat.appendChild(welcomeMsg);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function showCourseTypesMenu() {
+      const courseTypesMsg = document.createElement("div");
+      courseTypesMsg.className = "msg bot";
+      courseTypesMsg.innerHTML = `
+        <p>Que tipo de curso deseja consultar?</p>
+        <div class="menu-options">
+          <button class="menu-btn" onclick="sendMenuOption('licenciatura')">1. Licenciaturas</button>
+          <button class="menu-btn" onclick="sendMenuOption('mestrado')">2. Mestrados</button>
+          <button class="menu-btn" onclick="sendMenuOption('doutoramento')">3. Doutoramentos</button>
+        </div>
+      `;
+      chat.appendChild(courseTypesMsg);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function sendMenuOption(option) {
+      showTyping();
+      
+      // Se for a opção de cursos, mostra o menu de tipos de cursos
+      if (option === 'ask_uab_courses') {
+        setTimeout(() => {
+          hideTyping();
+          showCourseTypesMenu();
+        }, 800);
+        return;
+      }
+
+      // Mapeia os payloads para textos que o Rasa reconhece
+      const optionTextMap = {
+        'ask_undergraduate_courses': 'licenciatura',
+        'ask_masters_courses': 'mestrado',
+        'ask_phd_courses': 'doutoramento'
+      };
+
+      const messageToSend = optionTextMap[option] || option;
+      
+      fetch("http://localhost:5005/webhooks/rest/webhook", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ 
+          sender: "user_" + Date.now(),
+          message: messageToSend,  // Envia o texto em vez do payload
+          metadata: {
+            language: currentLanguage
+          }
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        hideTyping();
+        if (data && data.length > 0) {
+          data.forEach(response => {
+            if (response.text) {
+              appendMessage("bot", response.text);
+            }
+          });
+        }
+      })
+      .catch(error => {
+        hideTyping();
+        console.error("Erro:", error);
+      });
     }
 
     function toggleMaximize() {
@@ -461,170 +592,154 @@
       emojiPicker.style.display = emojiPicker.style.display === "none" ? "flex" : "none";
     }
 
-    function clearChat() {
-      chat.innerHTML = "";
-      appendMessage("bot", "Histórico de chat apagado. Como posso ajudar você?");
-    }
+  function clearChat() {
+    chat.innerHTML = "";
+    hasShownWelcome = false; // Isso fará com que a mensagem de boas-vindas seja mostrada novamente
+    
+    // Mostra a mensagem de chat apagado
+    const clearMsg = document.createElement("div");
+    clearMsg.className = "msg bot";
+    clearMsg.innerHTML = "<p>Histórico de chat apagado. Como posso ajudar você?</p>";
+    chat.appendChild(clearMsg);
+    
+    // Mostra novamente as opções iniciais
+    showWelcomeMessage();
+    
+    chat.scrollTop = chat.scrollHeight;
+  }
 
-    function appendMessage(sender, text) {
+    function appendMessage(sender, text, options = null) {
       const msgElement = document.createElement("div");
       msgElement.className = `msg ${sender}`;
       
-      // Verifica se é uma lista de cursos (padrão: "1. Curso" ou "- 1. Curso")
-      if (text.match(/^(\d+\.\s.+(\n|$))+/gm) || text.match(/^-\s\d+\.\s.+(\n|$)/gm)) {
-          const lines = text.split('\n');
-          const listContainer = document.createElement("div");
-          
-          lines.forEach(line => {
-              if (line.trim()) {
-                  // Remove hífens se existirem e espaços extras
-                  const cleanedLine = line.replace(/^\s*-\s*/, '').trim();
-                  
-                  // Verifica se é um item de lista numerado
-                  const match = cleanedLine.match(/^(\d+\.)\s*(.+)/);
-                  
-                  if (match) {
-                      const courseBubble = document.createElement("div");
-                      courseBubble.className = "course-bubble";
-                      
-                      const courseTitle = document.createElement("div");
-                      courseTitle.className = "course-title";
-                      courseTitle.innerHTML = `<span style="font-weight:bold">${match[1]}</span> ${match[2]}`;
-                      
-                      const detailsBtn = document.createElement("button");
-                      detailsBtn.className = "details-btn";
-                      detailsBtn.textContent = "Ver Detalhes";
-                      detailsBtn.onclick = () => {
-                          // Envia comando especial para o Rasa com o nome exato do curso
-                          sendSpecialCommand(`/get_course_details{"course_name":"${match[2].trim()}"}`);
-                      };
-                      
-                      courseBubble.appendChild(courseTitle);
-                      courseBubble.appendChild(detailsBtn);
-                      listContainer.appendChild(courseBubble);
-                  } else if (line.trim()) {
-                      // Linha não é um curso (texto normal)
-                      const textLine = document.createElement("p");
-                      textLine.textContent = line;
-                      textLine.style.margin = "4px 0";
-                      listContainer.appendChild(textLine);
-                  }
-              }
-          });
-          
-          msgElement.appendChild(listContainer);
+      // Verifica se tem opções de botões
+      if (options && options.buttons) {
+        msgElement.innerHTML = `<p>${text}</p>`;
+        
+        const buttonsContainer = document.createElement("div");
+        buttonsContainer.className = "buttons-container";
+        
+        options.buttons.forEach(button => {
+          const btn = document.createElement("button");
+          btn.className = "option-btn";
+          btn.textContent = button.title;
+          btn.onclick = () => {
+            if (button.payload) {
+              sendSpecialCommand(button.payload);
+            }
+          };
+          buttonsContainer.appendChild(btn);
+        });
+        
+        msgElement.appendChild(buttonsContainer);
+      }
+      // Verifica se é uma lista de cursos
+      else if (text.match(/^(\d+\.\s.+(\n|$))+/gm) || text.match(/^-\s\d+\.\s.+(\n|$)/gm)) {
+        const lines = text.split('\n');
+        const listContainer = document.createElement("div");
+        
+        lines.forEach(line => {
+          if (line.trim()) {
+            const cleanedLine = line.replace(/^\s*-\s*/, '').trim();
+            const match = cleanedLine.match(/^(\d+\.)\s*(.+)/);
+            
+            if (match) {
+              const courseBubble = document.createElement("div");
+              courseBubble.className = "course-bubble";
+              
+              const courseTitle = document.createElement("div");
+              courseTitle.className = "course-title";
+              courseTitle.innerHTML = `<span class="course-number">${match[1]}</span> ${match[2]}`;
+              
+              const detailsBtn = document.createElement("button");
+              detailsBtn.className = "details-btn";
+              detailsBtn.textContent = "Ver Detalhes";
+              detailsBtn.onclick = () => {
+                sendSpecialCommand(`/get_course_details{"course_name":"${match[2].trim()}"}`);
+              };
+              
+              courseBubble.appendChild(courseTitle);
+              courseBubble.appendChild(detailsBtn);
+              listContainer.appendChild(courseBubble);
+            } else if (line.trim()) {
+              const textLine = document.createElement("p");
+              textLine.textContent = line;
+              textLine.style.margin = "4px 0";
+              listContainer.appendChild(textLine);
+            }
+          }
+        });
+        
+        msgElement.appendChild(listContainer);
       } 
-      // Se for HTML (links ou formatação)
+      // Verifica se contém HTML
       else if (/<[a-z][\s\S]*>/i.test(text)) {
-          msgElement.innerHTML = text;
+        msgElement.innerHTML = text;
       }
       // Mensagem normal
       else {
-          // Preserva quebras de linha
-          msgElement.innerHTML = text.replace(/\n/g, '<br>');
+        msgElement.innerHTML = text.replace(/\n/g, '<br>');
       }
       
       chat.appendChild(msgElement);
       chat.scrollTop = chat.scrollHeight;
       
       if (sender === "bot" && !chatContainer.classList.contains("active")) {
-          hasNewMessage = true;
-          updateNotificationBadge();
+        hasNewMessage = true;
+        updateNotificationBadge();
       }
-  }
+    }
 
-  // Função para enviar comandos especiais (como detalhes do curso)
-  function sendSpecialCommand(command) {
-    showTyping();
-    
-    fetch("http://localhost:5005/webhooks/rest/webhook", {
-        method: "POST",
-        headers: { 
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        },
-        body: JSON.stringify({ 
-            sender: "user_" + Date.now(),
-            message: command,
-            metadata: {
-                language: currentLanguage
-            }
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        hideTyping();
-        if (data && data.length > 0) {
-            // Verifica se a resposta contém os detalhes ou se é a lista novamente
-            const isCourseDetails = data.some(item => 
-                item.text && item.text.includes("Descrição:") || 
-                item.text.includes("Duração:") || 
-                item.text.includes("Coordenação:")
-            );
-            
-            if (!isCourseDetails) {
-                appendMessage("bot", "Não encontrei detalhes específicos para este curso. Por favor, tente novamente ou consulte nosso site.");
-            } else {
-                data.forEach(response => {
-                    if (response.text) {
-                        appendMessage("bot", response.text);
-                    }
-                });
-            }
-        } else {
-            appendMessage("bot", "Não recebi informações sobre este curso. Por favor, tente novamente.");
-        }
-    })
-    .catch(error => {
-        hideTyping();
-        console.error("Erro:", error);
-        appendMessage("bot", `Desculpe, ocorreu um erro ao buscar detalhes. Erro: ${error.message}`);
-    });
-  }
-
-    function showCourseDetails(courseName) {
-        // Mostra indicador de que o bot está pesquisando
-        showTyping();
-        
-        // Faz a requisição para o webhook do Rasa
-        fetch("http://localhost:5005/webhooks/rest/webhook", {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            body: JSON.stringify({ 
-                sender: "user_" + Date.now(),
-                message: `/get_course_details{"course_name":"${courseName}"}`,
-                metadata: {
-                    language: currentLanguage
-                }
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideTyping();
-            if (data && data.length > 0) {
-                // Processa cada resposta do bot
-                data.forEach(response => {
-                    if (response.text) {
-                        appendMessage("bot", response.text);
-                    }
-                });
-            } else {
-                appendMessage("bot", "Não consegui obter os detalhes deste curso.");
-            }
-        })
-        .catch(error => {
-            hideTyping();
-            console.error("Erro:", error);
-            appendMessage("bot", `Desculpe, ocorreu um erro ao buscar detalhes: ${error.message}`);
-        });
+    function sendSpecialCommand(command) {
+      showTyping();
+      
+      fetch("http://localhost:5005/webhooks/rest/webhook", {
+          method: "POST",
+          headers: { 
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+          },
+          body: JSON.stringify({ 
+              sender: "user_" + Date.now(),
+              message: command,
+              metadata: {
+                  language: currentLanguage
+              }
+          })
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+      })
+      .then(data => {
+          hideTyping();
+          if (data && data.length > 0) {
+              const isCourseDetails = data.some(item => 
+                  item.text && item.text.includes("Descrição:") || 
+                  item.text.includes("Duração:") || 
+                  item.text.includes("Coordenação:")
+              );
+              
+              if (!isCourseDetails) {
+                  appendMessage("bot", "Não encontrei detalhes específicos para este curso. Por favor, tente novamente ou consulte nosso site.");
+              } else {
+                  data.forEach(response => {
+                      if (response.text) {
+                          appendMessage("bot", response.text);
+                      }
+                  });
+              }
+          } else {
+              appendMessage("bot", "Não recebi informações sobre este curso. Por favor, tente novamente.");
+          }
+      })
+      .catch(error => {
+          hideTyping();
+          console.error("Erro:", error);
+          appendMessage("bot", `Desculpe, ocorreu um erro ao buscar detalhes. Erro: ${error.message}`);
+      });
     }
 
     function updateNotificationBadge() {

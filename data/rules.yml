@@ -73,4 +73,42 @@ rules:
     - action: utter_perguntar_info_uab
     - action: action_buscar_info_uab
 
-    
+  - rule: Mostrar menu inicial
+    steps:
+      - intent: greet
+      - action: utter_welcome
+
+  - rule: Responder sobre admissão
+    steps:
+      - intent: admission_info
+      - action: utter_admission_info
+
+  - rule: Responder sobre matrículas
+    steps:
+      - intent: enrollment_info
+      - action: utter_enrollment_info
+
+  - rule: Responder sobre propinas
+    steps:
+      - intent: tuition_info
+      - action: utter_tuition_info
+
+  - rule: Responder sobre apoio académico
+    steps:
+      - intent: academic_support
+      - action: utter_academic_support
+
+  - rule: Responder sobre bolsas
+    steps:
+      - intent: scholarship_info
+      - action: utter_scholarship_info
+
+  - rule: Responder sobre investigação
+    steps:
+      - intent: research_info
+      - action: utter_research_info
+      
+  - rule: Responder sobre cursos com menu de opções
+    steps:
+      - intent: ask_uab_courses
+      - action: utter_ask_course_type

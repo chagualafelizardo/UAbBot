@@ -177,6 +177,30 @@ nlu:
     - mostrar [doutoramentos](course_type)
     - lista de [licenciaturas](course_type)
 
+# Adicionado no dia 
+- intent: ask_undergraduate_courses
+  examples: |
+    - licenciatura
+    - licenciaturas
+    - cursos de licenciatura
+    - graduação
+    - 1o ciclo
+
+- intent: ask_masters_courses
+  examples: |
+    - mestrado
+    - mestrados
+    - cursos de mestrado
+    - 2o ciclo
+
+- intent: ask_phd_courses
+  examples: |
+    - doutoramento
+    - doutoramentos
+    - cursos de doutoramento
+    - phd
+    - 3o ciclo
+
 # Informacao sobre a uab ...
 - intent: ask_about_uab
   examples: |
@@ -238,3 +262,73 @@ nlu:
     - Quero saber os contactos da UAb
     - Dá-me informações gerais da UAb
     - Onde posso encontrar os contactos da universidade?
+
+# Mais intencoes de fala
+- intent: admission_info
+  examples: |
+    - Admissão
+    - Quero saber sobre admissão
+    - Como me candidatar
+    - Processo de admissão
+    - 1
+
+- intent: enrollment_info
+  examples: |
+    - Matrículas
+    - Quero me matricular
+    - Processo de matrícula
+    - 2
+
+- intent: tuition_info
+  examples: |
+    - Propinas
+    - Quanto custa estudar na UAb
+    - Valores das mensalidades
+    - 3
+
+- intent: academic_support
+  examples: |
+    - Apoio Académico
+    - Preciso de ajuda com estudos
+    - Serviços de apoio
+    - 4
+
+- intent: scholarship_info
+  examples: |
+    - Bolsas
+    - Quero saber sobre bolsas
+    - Há bolsas disponíveis?
+    - Critérios para bolsas
+    - 6
+
+- intent: research_info
+  examples: |
+    - Investigação
+    - Pesquisa na UAb
+    - Grupos de pesquisa
+    - Projetos científicos
+    - 7
+
+# Nova intencao de fala para FAQs
+- intent: ask_faq
+  examples: |
+    - [Como posso me candidatar a um mestrado na UAb?](faq_topic:Admissão)
+    - [Estou com dificuldades em progredir no meu percurso académico](faq_topic:Apoio Académico)
+    - [As provas de avaliação deixam-me muito ansioso/a](faq_topic:Apoio Académico)
+    - [Existe apoio ao estudo na UAb?](faq_topic:Apoio Académico)
+    - [Como contactar meus colegas de curso?](faq_topic:Apoio Académico)
+    - [Conciliar vida profissional e estudos](faq_topic:Apoio Académico)
+    - [Onde esclarecer dúvidas?](faq_topic:Apoio Académico)
+    - [Estudar na UAb no exterior](faq_topic:Matrículas)
+    - [Dificuldades em pagar propinas](faq_topic:Propinas)
+    - [Como a UAb comunica com estudantes?](faq_topic:Recursos Acadêmicos)
+    - [O que é Acesso Aberto?](faq_topic:Publicações Científicas)
+    - [Recursos como estudante (Office 365)](faq_topic:Recursos Acadêmicos)
+    - [Acesso Aberto Dourado](faq_topic:Publicações Científicas)
+    - [O que é Auto Arquivo?](faq_topic:Publicações Científicas)
+    - [Acesso Aberto Verde](faq_topic:Publicações Científicas)
+    - [O que é Ciência Aberta?](faq_topic:Publicações Científicas)
+    - [Direitos de Autor na UAb](faq_topic:Direitos de Autor)
+    - [O que é um embargo?](faq_topic:Publicações Científicas)
+    - [Open Archives Initiative](faq_topic:Publicações Científicas)
+    - [O que é um Postprint?](faq_topic:Publicações Científicas)

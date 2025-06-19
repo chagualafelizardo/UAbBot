@@ -77,3 +77,118 @@ Isso é esperado - o db_setup deve finalizar após popular o banco. Para mantê-
 
 # https://gapae.uab.pt/perguntas-frequentes/ 
 # https://portal.uab.pt/dsd/faqs-2/
+
+# ==============================================
+
+Valores Válidos para topico (conforme o erro):
+
+Os únicos valores permitidos são:
+
+    "Admissão"
+
+    "Matrículas"
+
+    "Propinas"
+
+    "Currículo"
+
+    "Certificação"
+
+    "Apoio Académico"
+    "Recursos Acadêmicos"
+    "Ciência e Tecnologia"
+
+    "Outros"
+
+# Para adicionar um novo enum
+
+<!-- db.runCommand({
+  collMod: "faqs",
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["pergunta", "resposta", "topico", "data_criacao"],
+      properties: {
+        topico: {
+          bsonType: "string",
+          enum: [
+            "Admissão",
+            "Matrículas",
+            "Propinas",
+            "Currículo",
+            "Certificação",
+            "Apoio Académico",
+            "Recursos Acadêmicos",
+            "Ciência e Tecnologia",
+            "Publicações Científicas",
+            "Tecnologia",
+            "Direitos de Autor",
+            "Outros"
+          ],
+          description: "Categoria temática da FAQ"
+        },
+        // ... (outras propriedades do validator existente)
+      }
+    }
+  }
+}); -->
+
+db.createCollection("faqs", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["pergunta", "resposta", "topico", "data_criacao"],
+      properties: {
+        pergunta: {
+          bsonType: "string",
+          description: "Texto completo da pergunta frequente"
+        },
+        resposta: {
+          bsonType: "string",
+          description: "Resposta detalhada à pergunta"
+        },
+        topico: {
+          bsonType: "string",
+          enum: [
+            "Admissão",
+            "Matrículas",
+            "Propinas",
+            "Currículo",
+            "Certificação",
+            "Apoio Académico",
+            "Recursos Acadêmicos",
+            "Ciência e Tecnologia",
+            "Publicações Científicas",
+            "Tecnologia",
+            "Outros"  // Novo valor adicionado
+          ],
+          description: "Categoria temática da FAQ"
+        },
+        cursos_relacionados: {
+          bsonType: "array",
+          items: {
+            bsonType: "string"
+          },
+          description: "Lista de cursos relacionados à pergunta"
+        },
+        data_criacao: {
+          bsonType: "date",
+          description: "Data de criação do registro"
+        },
+        atualizacao: {
+          bsonType: "date",
+          description: "Data da última atualização"
+        },
+        relevancia: {
+          bsonType: "int",
+          minimum: 1,
+          maximum: 5,
+          description: "Nível de relevância (1-5)"
+        }
+      }
+    }
+  }
+});
+
+
+# ==============================================

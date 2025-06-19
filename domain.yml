@@ -19,6 +19,8 @@ intents:
   - ask_international
   - ask_research
   - perguntar_info_uab
+  - scholarship_info
+  - research_info
 
 entities:
   - course_type:
@@ -38,6 +40,42 @@ entities:
   - curso_url
   - uab_topic
   - topico
+# Entidades para FAQs
+  - faq_topic:
+      values:
+        - "Admissão"
+        - "Matrículas"
+        - "Propinas"
+        - "Currículo"
+        - "Certificação"
+        - "Apoio Académico"
+        - "Recursos Acadêmicos"
+        - "Ciência e Tecnologia"
+        - "Publicações Científicas"
+        - "Tecnologia"
+        - "Direitos de Autor"
+      synonyms:
+        candidatar: "Admissão"
+        mestrado: "Admissão"
+        propina: "Propinas"
+        pagamento: "Propinas"
+        bolsa: "Propinas"
+        apoio: "Apoio Académico"
+        ansiedade: "Apoio Académico"
+        avaliação: "Apoio Académico"
+        colegas: "Apoio Académico"
+        networking: "Apoio Académico"
+        conciliar: "Apoio Académico"
+        emigrar: "Matrículas"
+        comunicação: "Recursos Acadêmicos"
+        Office365: "Recursos Acadêmicos"
+        Acesso Aberto: "Publicações Científicas"
+        Auto Arquivo: "Publicações Científicas"
+        embargo: "Publicações Científicas"
+        OAI: "Publicações Científicas"
+        Postprint: "Publicações Científicas"
+        Ciência Aberta: "Publicações Científicas"
+        direitos autorais: "Direitos de Autor"
 
 slots:
   course_type:
@@ -120,14 +158,16 @@ responses:
           Não encontrei nenhum curso com esse nome. Aqui estão outras opções:
 
   utter_ask_course_type:
-    - text: "Que tipo de curso está à procura? Licenciatura, Mestrado ou Doutoramento"
+    - text: "Que tipo de curso está à procura?"
       buttons:
-      - title: "Licenciatura"
-        payload: '/inform{"course_type":"licenciatura"}'
-      - title: "Mestrado"
-        payload: '/inform{"course_type":"mestrado"}'
-      - title: "Doutoramento"
-        payload: '/inform{"course_type":"doutoramento"}'
+        - title: "Licenciatura"
+          payload: "/inform{\"course_type\":\"licenciatura\"}"
+        - title: "Mestrado"
+          payload: "/inform{\"course_type\":\"mestrado\"}"
+        - title: "Doutoramento"
+          payload: "/inform{\"course_type\":\"doutoramento\"}"
+        - title: "Pós-Graduação"
+          payload: "/inform{\"course_type\":\"posgraduacao\"}"
 
   utter_course_details:
     - text: "Aqui estão os detalhes completos do curso:\n\n{details}"
@@ -149,6 +189,81 @@ responses:
 
   utter_perguntar_info_uab:
     - text: "Já vou buscar as informações sobre '{topico}'. Um momento..."
+
+  utter_welcome:
+    - text: "Olá! Eu sou o UAbBot, o seu assistente virtual. Como posso ajudar você hoje? 👋"
+      buttons:
+        - title: "Admissão"
+          payload: "/admission_info"
+        - title: "Matrículas"
+          payload: "/enrollment_info"
+        - title: "Propinas"
+          payload: "/tuition_info"
+        - title: "Apoio Académico"
+          payload: "/academic_support"
+
+  utter_admission_info:
+    - text: "Aqui estão informações sobre admissão na UAb:\n\n1. Requisitos de entrada\n2. Prazos de candidatura\n3. Documentação necessária\n\nSobre qual aspecto gostaria de saber mais?"
+      buttons:
+        - title: "Requisitos"
+          payload: "/admission_requirements"
+        - title: "Prazos"
+          payload: "/admission_deadlines"
+        - title: "Documentos"
+          payload: "/required_documents"
+
+  utter_enrollment_info:
+    - text: "Informações sobre matrículas:\n\n1. Processo de matrícula\n2. Prazos\n3. Documentação\n\nO que deseja saber?"
+      buttons:
+        - title: "Processo"
+          payload: "/enrollment_process"
+        - title: "Prazos"
+          payload: "/enrollment_deadlines"
+        - title: "Documentos"
+          payload: "/enrollment_documents"
+
+  utter_tuition_info:
+    - text: "Informações sobre propinas:\n\n1. Valores\n2. Métodos de pagamento\n3. Bolsas e financiamento\n\nSobre qual tópico precisa?"
+      buttons:
+        - title: "Valores"
+          payload: "/tuition_values"
+        - title: "Pagamento"
+          payload: "/payment_methods"
+        - title: "Bolsas"
+          payload: "/scholarships"
+
+  utter_academic_support:
+    - text: "Serviços de apoio académico:\n\n1. Orientação pedagógica\n2. Biblioteca digital\n3. Apoio técnico\n4. Apoio a estudantes com necessidades especiais\n\nQual serviço lhe interessa?"
+      buttons:
+        - title: "Orientação"
+          payload: "/pedagogical_guidance"
+        - title: "Biblioteca"
+          payload: "/digital_library"
+        - title: "Técnico"
+          payload: "/technical_support"
+        - title: "Necessidades especiais"
+          payload: "/special_needs"
+  utter_scholarship_info:
+    - text: "Informações sobre bolsas:\n\n1. Bolsas de estudo\n2. Bolsas de investigação\n3. Critérios de atribuição\n\nSobre qual aspecto gostaria de saber?"
+      buttons:
+        - title: "Bolsas de estudo"
+          payload: "/study_scholarships"
+        - title: "Bolsas de investigação"
+          payload: "/research_scholarships"
+        - title: "Critérios"
+          payload: "/scholarship_criteria"
+
+  utter_research_info:
+    - text: "Áreas de investigação na UAb:\n\n1. Projetos em curso\n2. Grupos de pesquisa\n3. Publicações\n4. Oportunidades\n\nO que lhe interessa?"
+      buttons:
+        - title: "Projetos"
+          payload: "/research_projects"
+        - title: "Grupos"
+          payload: "/research_groups"
+        - title: "Publicações"
+          payload: "/research_publications"
+        - title: "Oportunidades"
+          payload: "/research_opportunities"
 
 actions:
   - action_fallback_web_search
