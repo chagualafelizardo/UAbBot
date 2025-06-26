@@ -106,7 +106,7 @@ class MongoDBManager:
     def close(self):
         self.client.close()
 
-
+# Classe para buscar cursos
 class ActionSearchUAbCourses(Action):
     def name(self) -> Text:
         return "action_search_uab_courses"
@@ -115,25 +115,91 @@ class ActionSearchUAbCourses(Action):
         db = None
         try:
             db = MongoDBManager()
-            course_type = self._detect_course_type(tracker.latest_message.get('text', ''))
             
+            # Extrair entidades da mensagem do usuário
+            course_type = next(tracker.get_latest_entity_values("course_type"), None)
+            course_name = next(tracker.get_latest_entity_values("course_name"), None)
+            
+            # Se não encontrar entidades, tentar detectar pelo texto
             if not course_type:
+                course_type = self._detect_course_type(tracker.latest_message.get('text', ''))
+            
+            query = {}
+            
+            # Construir query baseada no que foi fornecido
+            if course_type and course_name:
+                query = {
+                    '$and': [
+                        {'$or': [
+                            {'tipo': course_type},
+                            {'nome': {'$regex': course_type, '$options': 'i'}}
+                        ]},
+                        {'nome': {'$regex': course_name, '$options': 'i'}}
+                    ]
+                }
+            elif course_type:
+                query = {
+                    '$or': [
+                        {'tipo': course_type},
+                        {'nome': {'$regex': course_type, '$options': 'i'}}
+                    ]
+                }
+            elif course_name:
+                query = {'nome': {'$regex': course_name, '$options': 'i'}}
+            else:
                 dispatcher.utter_message(response="utter_ask_course_type")
                 return []
 
-            courses = db.get_cursos(nivel=course_type)
+            # Buscar cursos com a query construída
+            courses = list(db.cursos_collection.find(query).limit(10))
             
             if not courses:
+                # Tentar busca mais ampla se não encontrar resultados
+                if course_name:
+                    courses = list(db.cursos_collection.find(
+                        {'nome': {'$regex': course_name, '$options': 'i'}}
+                    ).limit(5))
+                
+                if not courses:
+                    message = "Não encontrei cursos"
+                    if course_type:
+                        message += f" de {course_type}"
+                    if course_name:
+                        message += f" com o nome '{course_name}'"
+                    
+                    dispatcher.utter_message(
+                        text=message + " disponíveis.",
+                        buttons=[{"title": "Ver todos os cursos", "payload": "/ask_uab_courses"}]
+                    )
+                    return []
+
+            # Se encontrou apenas um curso, mostrar diretamente os detalhes
+            if len(courses) == 1:
+                course = courses[0]
+                formatted = db._format_curso_details(course)
+                response = self._format_course_response(formatted)
+                buttons = self._create_detail_buttons(formatted)
+                dispatcher.utter_message(text=response, buttons=buttons)
+                return [SlotSet("course_name", course['nome']), SlotSet("course_url", formatted['url_detalhes'])]
+            
+            # Para múltiplos cursos, mostrar lista resumida
+            dispatcher.utter_message(
+                text=f"🔍 Encontrei {len(courses)} cursos que correspondem à sua pesquisa:"
+            )
+            
+            for course in courses[:5]:  # Limitar a 5 cursos
+                response = self._format_course_card(course)
+                buttons = self._create_course_buttons(course)
+                dispatcher.utter_message(text=response, buttons=buttons)
+            
+            if len(courses) > 5:
                 dispatcher.utter_message(
-                    text=f"Não encontrei cursos de {course_type} disponíveis.",
-                    buttons=[{"title": "Ver todos os cursos", "payload": "/ask_uab_courses"}]
+                    text=f"ℹ️ Mostrando 5 de {len(courses)} cursos encontrados. " +
+                    "Você pode refinar sua pesquisa especificando melhor o que procura."
                 )
-                return []
             
-            response = self._format_courses_response(course_type, courses)
-            dispatcher.utter_message(text=response, buttons=self._create_course_buttons(courses))
-            
-            return [SlotSet("course_type", course_type)]
+            return [SlotSet("course_type", course_type) if course_type else None,
+                    SlotSet("course_name", course_name) if course_name else None]
         
         except Exception as e:
             logger.error(f"Erro na busca: {str(e)}", exc_info=True)
@@ -143,18 +209,97 @@ class ActionSearchUAbCourses(Action):
             if db:
                 db.close()
 
-    def _format_courses_response(self, course_type: str, courses: List[Dict]) -> str:
-        courses_text = "\n".join(
-            f"• {course['nome']} ({course['departamento']}) - {course['regulamentacao']['regime']}"
-            for course in courses
-        )
-        return f"🔍 Cursos de {course_type} encontrados:\n\n{courses_text}"
+    def _format_course_card(self, course: Dict) -> str:
+        """Formata um cartão completo com informações do curso"""
+        nivel = course.get('tipo', 'Nível não especificado')
+        departamento = course.get('departamento', 'Departamento não especificado')
+        regime = course.get('regulamentacao', {}).get('regime', 'Regime não especificado')
+        
+        ects = ""
+        if 'estrutura_curricular' in course and 'maior' in course['estrutura_curricular']:
+            ects = f"📝 ECTS: {course['estrutura_curricular']['maior'].get('ects', 'Não especificado')}"
+        
+        modalidade = ""
+        if 'modalidade' in course and 'ensino' in course['modalidade']:
+            modalidade = f"💻 Modalidade: {course['modalidade']['ensino']}"
+            if 'observacoes' in course['modalidade']:
+                modalidade += f" ({course['modalidade']['observacoes']})"
+        
+        descricao = course.get('descricao', 'Descrição não disponível')
+        if len(descricao) > 150:
+            descricao = descricao[:150] + "..."
+        
+        url_detalhes = course.get('apresentacao', {}).get('url_detalhes', '#')
+        
+        return f"""
+📚 *{course['nome']}* ({nivel.capitalize()})
 
-    def _create_course_buttons(self, courses: List[Dict]) -> List[Dict]:
-        return [{
-            "title": f"Detalhes de {course['nome']}",
-            "payload": f'/get_course_details{{"course_name":"{course["nome"]}"}}'
-        } for course in courses[:3]]
+🏛️ Departamento: {departamento}
+🌐 Regime: {regime}
+{ects}
+{modalidade}
+
+📖 {descricao}
+🔗 [Mais detalhes]({url_detalhes})
+"""
+
+    def _create_course_buttons(self, course: Dict) -> List[Dict]:
+        buttons = [
+            {
+                "title": "📋 Ver detalhes completos",
+                "payload": f'/get_course_details{{"course_name":"{course["nome"]}"}}'
+            }
+        ]
+        
+        if 'apresentacao' in course and 'url_detalhes' in course['apresentacao']:
+            buttons.append({
+                "title": "🌐 Página oficial",
+                "url": course['apresentacao']['url_detalhes'],
+                "payload": "/external_link"
+            })
+            
+        return buttons
+
+    def _format_course_response(self, course: Dict) -> str:
+        """Formata a resposta detalhada do curso (usada quando há apenas um resultado)"""
+        return f"""
+📚 *{course['nome']}* ({course['nivel'].capitalize()})
+
+🏛️ *Departamento:* {course['departamento']}
+🌐 *Regime:* {course['regime']} | *Língua:* {course['lingua']}
+📝 *ECTS Totais:* {course['ects_total']}
+
+📖 *Descrição:*
+{course['descricao']}
+
+👥 *Público-Alvo:*
+{course['publico_alvo']}
+
+👨‍🏫 *Coordenação:*
+{course['coordenacao']}
+
+🎓 *Minors Disponíveis:*
+{course['minors']}
+
+🔗 [Detalhes completos do curso]({course['url_detalhes']})
+"""
+
+    def _create_detail_buttons(self, course: Dict) -> List[Dict]:
+        return [
+            {
+                "title": "📚 Ver disciplinas",
+                "payload": f'/ask_course_subjects{{"course_name":"{course["nome"]}"}}'
+            },
+            {
+                "title": "🌐 Acessar página oficial",
+                "url": course['url_detalhes'],
+                "payload": "/external_link"
+            },
+            {
+                "title": "🔍 Mais cursos",
+                "payload": "/ask_uab_courses"
+            }
+        ]
 
     def _detect_course_type(self, message: str) -> Optional[str]:
         message = message.lower()
@@ -169,6 +314,7 @@ class ActionSearchUAbCourses(Action):
         return None
 
 
+# Classe para buscar os detalhes dos cursos
 class ActionGetCourseDetails(Action):
     def name(self) -> Text:
         return "action_get_course_details"
@@ -245,7 +391,7 @@ class ActionGetCourseDetails(Action):
             }
         ]
 
-
+# Classe para buscar os cursos
 class ActionGetCourseSubjects(Action):
     def name(self) -> Text:
         return "action_get_course_subjects"
@@ -320,3 +466,123 @@ class ActionGetCourseSubjects(Action):
                 "payload": "/ask_uab_courses"
             }
         ]
+
+# Classe para buscar as Frequents Quantions And Answer  
+class ActionSearchFAQ(Action):
+    def name(self) -> Text:
+        return "action_search_faq"
+    
+    async def run(self, dispatcher: CollectingDispatcher,
+                tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        # Primeiro verificamos se realmente é uma FAQ
+        if not self._is_faq_question(tracker):
+            logger.debug("Mensagem não identificada como FAQ - reclassificando")
+            return await self._handle_non_faq(dispatcher, tracker)
+            
+        try:
+            client = MongoClient('mongodb://root:root@uabbot-mongodb-1:27017/')
+            db = client['uab']
+            faqs = db['faqs']
+            
+            user_message = tracker.latest_message.get('text')
+            topic = next(tracker.get_latest_entity_values("faq_topic"), None)
+
+            # Busca otimizada com fallback
+            results = await self._search_faqs_with_fallback(faqs, user_message, topic)
+            
+            if results:
+                return self._format_faq_response(dispatcher, results)
+                
+            return self._handle_faq_not_found(dispatcher, user_message)
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar FAQ: {str(e)}")
+            return self._handle_search_error(dispatcher)
+
+    def _is_faq_question(self, tracker: Tracker) -> bool:
+        """Determina se a mensagem é realmente uma pergunta de FAQ"""
+        message = tracker.latest_message.get('text', '').lower()
+        intent = tracker.latest_message.get('intent', {}).get('name')
+        
+        # Palavras-chave que indicam claramente uma FAQ
+        faq_keywords = [
+            'como', 'quando', 'onde', 'quem', 'qual', 
+            'quais', 'posso', 'devo', 'preciso', 'dúvida',
+            'candidatar', 'processo', 'documento', 'prazo',
+            'requisito', 'informação', 'ajuda','admissao',
+            'Admissão', 'Apoio Académico', 'Publicações',
+            'Científicas', 'Publicações Científicas',
+            ''
+        ]
+        
+        # Verifica se há entidade de FAQ ou palavras-chave
+        has_faq_entity = any(e['entity'] == 'faq_topic' 
+                           for e in tracker.latest_message.get('entities', []))
+        
+        is_faq_intent = intent == 'ask_faq'
+        contains_keywords = any(kw in message for kw in faq_keywords)
+        
+        return has_faq_entity or is_faq_intent or contains_keywords
+
+    async def _handle_non_faq(self, dispatcher: CollectingDispatcher, tracker: Tracker):
+        """Lida com mensagens que não são FAQs"""
+        message = tracker.latest_message.get('text', '')
+        
+        # Verifica se parece ser sobre cursos
+        course_keywords = ['licenciatura', 'mestrado', 'doutoramento', 'curso', 'disciplina']
+        if any(kw in message.lower() for kw in course_keywords):
+            dispatcher.utter_message(text="Parece que você está perguntando sobre cursos. Vou ajudar com isso.")
+            return [ActionExecuted("action_search_uab_courses")]
+        
+        # Fallback genérico
+        dispatcher.utter_message(text="Não consegui identificar sua solicitação. Você pode reformular?")
+        return []
+
+    async def _search_faqs_with_fallback(self, faqs_collection, user_message: str, topic: Optional[str]):
+        """Busca FAQs com estratégia de fallback"""
+        # Primeira tentativa: busca exata por tópico
+        if topic:
+            results = list(faqs_collection.find(
+                {"topico": topic},
+                {"pergunta": 1, "resposta": 1, "detalhes_adicionais": 1}
+            ).limit(3))
+            if results:
+                return results
+
+        # Segunda tentativa: busca por similaridade textual
+        results = list(faqs_collection.find(
+            {"$text": {"$search": user_message}},
+            {"score": {"$meta": "textScore"}, "pergunta": 1, "resposta": 1}
+        ).sort([("score", {"$meta": "textScore"})]).limit(3))
+
+        return results if results else None
+
+    def _format_faq_response(self, dispatcher: CollectingDispatcher, results: List[Dict]) -> List[Dict]:
+        """Formata a resposta da FAQ"""
+        best = results[0]
+        response = best["resposta"]
+
+        if len(results) > 1:
+            related_topics = {f["topico"] for f in results[1:] if f.get("topico")}
+            if related_topics:
+                buttons = [{
+                    "title": t,
+                    "payload": f'/ask_faq{{"faq_topic":"{t}"}}'
+                } for t in related_topics]
+                dispatcher.utter_message(text=response, buttons=buttons)
+                return []
+
+        dispatcher.utter_message(text=response)
+        return []
+
+    def _handle_faq_not_found(self, dispatcher: CollectingDispatcher, user_message: str) -> List[Dict]:
+        """Lida com casos onde a FAQ não foi encontrada"""
+        logger.warning(f"FAQ não encontrada para: {user_message}")
+        dispatcher.utter_message(response="utter_faq_not_found")
+        return []
+
+    def _handle_search_error(self, dispatcher: CollectingDispatcher) -> List[Dict]:
+        """Lida com erros na busca"""
+        dispatcher.utter_message(text="Ocorreu um erro ao acessar nossa base de conhecimento.")
+        return []

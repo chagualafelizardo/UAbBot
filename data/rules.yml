@@ -107,8 +107,34 @@ rules:
     steps:
       - intent: research_info
       - action: utter_research_info
-      
+
+  
+ # Regra específica para FAQs deve vir PRIMEIRO
+  - rule: Responder FAQ com tópico específico
+    steps:
+      - intent: ask_faq
+        entities:
+          - faq_topic
+      - action: action_search_faq
+
+  # Adicione esta regra para perguntas gerais de FAQ
+  - rule: Responder FAQ genérica
+    steps:
+      - intent: ask_faq
+      - action: action_search_faq
+
+  # Mantenha as outras regras ABAIXO das regras de FAQ
   - rule: Responder sobre cursos com menu de opções
     steps:
       - intent: ask_uab_courses
       - action: utter_ask_course_type
+
+  - rule: Priorizar FAQs sobre cursos quando houver entidade faq_topic
+    condition:
+      - slot_was_set:
+          - faq_topic: true  # Alterado de null para true
+    steps:
+      - intent: ask_faq
+        entities:
+          - faq_topic
+      - action: action_search_faq

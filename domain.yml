@@ -21,6 +21,7 @@ intents:
   - perguntar_info_uab
   - scholarship_info
   - research_info
+  - ask_faq
 
 entities:
   - course_type:
@@ -109,6 +110,13 @@ slots:
       - type: from_entity
         entity: topico
         
+  faq_topic:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: faq_topic
+
 responses:
   utter_greet:
     - text: "Bom dia! Em que posso ajudar hoje?"
@@ -265,6 +273,33 @@ responses:
         - title: "Oportunidades"
           payload: "/research_opportunities"
 
+  utter_faq_response:
+    - text: "{faq_answer}"
+    - text: "Aqui está a informação que encontrei:\n\n{faq_answer}"
+    - text: "De acordo com nossos registros:\n\n{faq_answer}"
+  
+  utter_faq_more_info:
+    - text: "Deseja mais detalhes sobre algum aspecto específico?"
+      buttons:
+        - title: "Sim, mostrar mais"
+          payload: "/affirm"
+        - title: "Não, obrigado"
+          payload: "/deny"
+        - title: "Ver cursos relacionados"
+          payload: "/ask_related_courses"
+  
+  utter_faq_not_found:
+    - text: "Não encontrei informações exatas sobre isso. Posso ajudar com:"
+      buttons:
+        - title: "Admissão"
+          payload: '/ask_faq{"faq_topic":"Admissão"}'
+        - title: "Apoio Académico"
+          payload: '/ask_faq{"faq_topic":"Apoio Académico"}'
+        - title: "Publicações"
+          payload: '/ask_faq{"faq_topic":"Publicações Científicas"}'
+        - title: "Voltar ao menu principal"
+          payload: "/restart"
+
 actions:
   - action_fallback_web_search
   - action_search_uab_courses
@@ -272,6 +307,7 @@ actions:
   - action_show_course_details
   - action_get_uab_info
   - action_buscar_info_uab
+  - action_search_faq  
 
 session_config:
   session_expiration_time: 60

@@ -20,7 +20,6 @@ nlu:
     - Meu amor
     - Ó meu rico
     - Preciso de ajuda
-    - Viva
 
 - intent: goodbye
   examples: |
@@ -164,7 +163,7 @@ nlu:
     - [doutoramentos](course_type)
     - cursos de [mestrado](course_type)
     - lista de [doutoramentos](course_type)
-      [mestrado](course_type)
+    - [mestrado](course_type)
     - cursos de [doutoramento](course_type)
     - [licenciatura](course_type)
     - [licenciatura](course_type)
@@ -332,3 +331,11 @@ nlu:
     - [O que é um embargo?](faq_topic:Publicações Científicas)
     - [Open Archives Initiative](faq_topic:Publicações Científicas)
     - [O que é um Postprint?](faq_topic:Publicações Científicas)
+    - [Como me candidato a um mestrado?](faq_topic:Admissão)
+    - [Processo de candidatura para mestrados](faq_topic:Admissão)
+    - [Quais os documentos necessários para mestrado?](faq_topic:Admissão)
+    - [Preciso de ajuda com minha candidatura](faq_topic:Admissão)
+    - [Como funciona o processo seletivo?](faq_topic:Admissão)
+    - [Prazos para inscrição em mestrado](faq_topic:Admissão)
+    - [Valor da propina para mestrado](faq_topic:Propinas)
+    - [Existem bolsas para mestrado?](faq_topic:Propinas)

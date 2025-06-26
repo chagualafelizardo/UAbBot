@@ -79,6 +79,8 @@ Isso é esperado - o db_setup deve finalizar após popular o banco. Para mantê-
 # https://portal.uab.pt/dsd/faqs-2/
 
 # ==============================================
+# Para acessar a minha base de dados em MongoDB
+docker exec -it uabbot-mongodb-1 mongosh -u root -p root
 
 Valores Válidos para topico (conforme o erro):
 
@@ -101,7 +103,6 @@ Os únicos valores permitidos são:
     "Outros"
 
 # Para adicionar um novo enum
-
 <!-- db.runCommand({
   collMod: "faqs",
   validator: {
@@ -192,3 +193,11 @@ db.createCollection("faqs", {
 
 
 # ==============================================
+
+Monitoramento do consumo dos recuros no docker
+watch -n 5 "docker stats --no-stream"
+
+4. Limpar recursos inúteis (não derruba nada)
+Use este comando para limpar redes, volumes e imagens não usadas:
+
+docker system prune -f
