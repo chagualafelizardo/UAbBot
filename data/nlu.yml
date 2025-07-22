@@ -175,6 +175,13 @@ nlu:
     - quero [mestrado](course_type)
     - mostrar [doutoramentos](course_type)
     - lista de [licenciaturas](course_type)
+    - Quero informações sobre [este curso](course_name)
+    - [Nome do curso](course_name)
+    - Existe [curso de psicologia](course_name)?
+    - [Gestão](course_name)
+    - [Licenciatura em Design](course_name)
+    - [Mestrado em Informática](course_name)
+    - [Doutoramento em Biologia](course_name)
 
 # Adicionado no dia 
 - intent: ask_undergraduate_courses

@@ -135,6 +135,7 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+      - ./data/documents:/data/documents  # Volume para compartilhar documentos
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
@@ -170,6 +171,40 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  document_loader:
+    build:
+      context: .
+      dockerfile: Dockerfile.actions
+    container_name: rasa_document_loader
+    env_file: .env
+    volumes:
+      - ./data/documents:/app/data/documents
+      - ./scripts:/app/scripts
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGO_URI: "mongodb://root:root@mongodb:27017/uab?authSource=admin&retryWrites=true&w=majority"
+      DB_NAME: "uab"
+    command: >
+      sh -c "
+      echo 'Verificando conexão com MongoDB...';
+      until python /app/scripts/wait_for_mongo.py; do
+        echo 'Aguardando MongoDB...';
+        sleep 5;
+      done;
+      echo 'Iniciando carregamento de documentos...';
+      python /app/scripts/document_loader.py || (echo '❌ Falha ao carregar documentos'; exit 1);
+      echo '✅ Documentos carregados com sucesso!';
+      tail -f /dev/null
+      "
+    healthcheck:
+      # test: ["CMD", "python", "/app/scripts/wait_for_mongo.py"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   postgres_data:

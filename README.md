@@ -201,3 +201,17 @@ watch -n 5 "docker stats --no-stream"
 Use este comando para limpar redes, volumes e imagens não usadas:
 
 docker system prune -f
+
+mysqldump -u root -p --skip-lock-tables cictra --result-file="C:\Users\Felizardo Chaguala\Documents\OpenMRS\backup_hospital_militar_maputo_30-06-2025.sql"
+
+
+# =============================================================================================
+✅ Por que aparecem fs.files e fs.chunks?
+
+Essas duas coleções são automáticas quando você usa o GridFS com o pymongo/GridFS.
+
+    fs.files: armazena os metadados de cada arquivo (nome, tamanho, tipo, etc.)
+
+    fs.chunks: armazena o conteúdo binário real do arquivo, dividido em blocos
+
+Essas coleções são parte do funcionamento normal do GridFS. Mesmo que você não as mencione diretamente no seu código, o fs.put() do GridFS cuida disso automaticamente.
