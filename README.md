@@ -215,3 +215,27 @@ Essas duas coleções são automáticas quando você usa o GridFS com o pymongo/
     fs.chunks: armazena o conteúdo binário real do arquivo, dividido em blocos
 
 Essas coleções são parte do funcionamento normal do GridFS. Mesmo que você não as mencione diretamente no seu código, o fs.put() do GridFS cuida disso automaticamente.
+
+
+Limpe o cache do Docker:
+
+bash
+
+docker system prune -a
+docker builder prune
+
+# #############################################
+Índice vetorial (crucial para performance):
+javascript
+
+db.responses.createIndex(
+    { "embedding": "vector" },
+    {
+        "name": "vectorSearchIndex",
+        "vectorOptions": {
+            "type": "hnsw",
+            "space": "cosine",
+            "dimension": 384  // deve corresponder ao tamanho do seu embedding
+        }
+    }
+)

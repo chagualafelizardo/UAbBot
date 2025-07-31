@@ -21,7 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     python3-dev \
     libmagic1 \
-    # Dependências para OCR
+    # Dependências para conexão e OCR
+    netcat-openbsd \
     tesseract-ocr \
     tesseract-ocr-por \
     poppler-utils \
@@ -39,7 +40,18 @@ COPY requirements.txt .
 # Instala os pacotes Python (incluindo OCR)
 RUN pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install pytesseract pdf2image python-docx pymongo pdfplumber pymupdf
+    pip install pytesseract pdf2image python-docx pymongo pdfplumber pymupdf && \
+    pip install --no-cache-dir sentence-transformers numpy pymongo scikit-learn
+    
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-por \
+    poppler-utils \
+    libtesseract-dev \
+    libleptonica-dev \
+    && apt-get clean
+
+RUN pip install scikit-learn pandas
 
 # Copia o código da aplicação
 COPY ./actions /app/actions

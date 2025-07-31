@@ -970,6 +970,11 @@
           body: JSON.stringify({ 
             sender: "user_" + Date.now(),
             message: message,
+            // Adicione estas linhas para forçar a intenção correta:
+            intent: {
+              name: "general_query",
+              confidence: 0.99
+            },
             metadata: {
               language: currentLanguage
             }

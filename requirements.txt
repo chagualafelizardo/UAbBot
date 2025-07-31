@@ -1,15 +1,43 @@
 requests
-pymongo>=4.6.0
+
+# Requisitos básicos
+numpy==1.24.0
+pandas==2.0.3
+scikit-learn==1.3.0
+
+# Processamento de documentos
+pymupdf==1.22.5
+# pdfplumber>=0.9.0
+pdfplumber==0.9.0
+# python-docx>=0.8.11
+python-docx==0.8.11
+pytesseract==0.3.10
+pdf2image==1.16.3
+
+# NLP e embeddings
+huggingface-hub==0.19.4
+sentence-transformers>=2.2.2
+rapidfuzz==3.4.0
+python-Levenshtein==0.21.1
+transformers==4.36.2
+
+# Banco de dados
+pymongo==4.6.0
+
+# Outras bibliotecas relevantes
 pypdf>=3.0.0
 PyPDF2>=3.0.0
-python-docx>=0.8.11
 beautifulsoup4
 sqlalchemy<2.0
-numpy>=1.24.0
 psycopg2-binary>=2.9.0
-pdfplumber>=0.9.0
-pytesseract>=0.3.10
-pdf2image>=1.16.3
-pymupdf>=1.23.0
-sentence-transformers>=2.2.2
 rasa-sdk==3.6.2
+
+# Otimização
+onnxruntime==1.16.3
+torch==2.1.2 --index-url https://download.pytorch.org/whl/cpu
+
+# rasa==3.6.0
+# pymongo==4.5.0
+# sentence-transformers==2.2.2
+# scikit-learn==1.3.2
+# numpy==1.24.4

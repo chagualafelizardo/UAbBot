@@ -2,7 +2,12 @@ FROM python:3.10-slim
 
 # Evita a criação de arquivos .pyc e permite saída sem buffer
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    # Configuração do Hugging Face
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    TRANSFORMERS_CACHE=/app/data/model_cache \
+    HF_HOME=/app/data/model_cache \
+    TORCH_HOME=/app/data/model_cache
 
 # Atualiza o sistema e instala as dependências do sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -28,6 +33,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     libtesseract-dev \
     libleptonica-dev \
+    # Dependências para otimização
+    libopenblas-dev \
+    libomp-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -37,23 +45,20 @@ WORKDIR /app
 # Copia apenas o requirements.txt inicialmente para usar cache
 COPY requirements.txt .
 
-# Instala os pacotes Python (incluindo OCR)
+# Instala os pacotes Python PRIMEIRO
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install pytesseract pdf2image python-docx pymongo pdfplumber pymupdf && \
-    pip install --no-cache-dir sentence-transformers numpy pymongo scikit-learn
-    
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    tesseract-ocr \
-    tesseract-ocr-por \
-    poppler-utils \
-    libtesseract-dev \
-    libleptonica-dev \
-    && apt-get clean
+    pip install --no-cache-dir -r requirements.txt
+
+# SÓ DEPOIS faz o download do modelo
+RUN mkdir -p /app/data/model_cache && \
+    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2', cache_folder='/app/data/model_cache')"
+
+# Cria diretório para dados persistentes
+RUN mkdir -p /app/data && chmod -R a+rwx /app/data
 
 # Copia o código da aplicação
-COPY ./actions /app/actions
 COPY ./scripts /app/scripts
+COPY ./actions /app/actions
 
-# Define o ponto de entrada padrão (pode ser sobrescrito)
+# Define o ponto de entrada padrão
 CMD ["python", "/app/scripts/document_loader.py"]

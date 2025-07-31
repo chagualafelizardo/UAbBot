@@ -1,83 +1,25 @@
-# Configuration for Rasa NLU and Core
-# https://rasa.com/docs/rasa/model-configuration/
-
 recipe: default.v1
-assistant_id: 20250429-111708-forward-sole
 language: pt
 
 pipeline:
-  - name: WhitespaceTokenizer
-  - name: RegexFeaturizer
-  - name: LexicalSyntacticFeaturizer
-  
-  # Configuração otimizada para FAQs
-  - name: CountVectorsFeaturizer
-    analyzer: word
-    min_ngram: 1
-    max_ngram: 3  # Aumentado para capturar melhor perguntas completas
-    stop_words: pt  # Adicionado para remover palavras irrelevantes
-  
-  - name: CountVectorsFeaturizer
-    analyzer: char_wb
-    min_ngram: 2  # Ajustado para melhorar similaridade
-    max_ngram: 5
-  
-  # Entidades para FAQs
-  - name: RegexEntityExtractor
-    patterns:
-      - pattern: >-
-          (?i)\b(licenciaturas?|lecienciaturas?|mestrados?|doutoramentos?|pós[-\s]?graduações?)\b
-        name: "course_type"
-      - pattern: >-
-          (?i)\b(inform[áa]tica|psicologia|gest[ãa]o|matem[áa]tica|hist[óo]ria|ci[êe]ncias|artes|l[íi]nguas|educa[çc][ãa]o)\b
-        name: "course_name"
-      - pattern: >-
-          (?i)\b(admissão|candidatura|matr[íi]cula|propina|bolsa|apoio|avaliação|recursos|publicações|ci[êe]ncia|tecnologia)\b
-        name: "faq_topic"  # Padrões adicionais para FAQs
-
-  # Classificador principal com ajustes para FAQs
-  - name: DIETClassifier
-    epochs: 300
-    hidden_layers_sizes:
-      text: [256, 128]  # Arquitetura mais profunda
-    intent_classification: true
-    entity_recognition: true
-    constrain_similarities: true
-    model_confidence: "linear_norm"  # Suaviza confianças extremas
-  
-  - name: EntitySynonymMapper
-  
-  # Fallback mais sensível para FAQs
-  - name: FallbackClassifier
-    threshold: 0.15  # Mais sensível para capturar perguntas similares
-    ambiguity_threshold: 0.08
+- name: WhitespaceTokenizer
+- name: RegexFeaturizer
+- name: LexicalSyntacticFeaturizer
+- name: CountVectorsFeaturizer
+  analyzer: "word"
+  min_ngram: 1
+  max_ngram: 1
+- name: DIETClassifier
+  epochs: 50
+- name: FallbackClassifier
+  threshold: 0.1
 
 policies:
-  - name: RulePolicy
-    core_fallback_threshold: 0.2
-    enable_fallback_prediction: True
-    check_for_contradictions: True
-    # Adicione prioridade explícita para FAQs
-    priority_rules:
-      - rule: "action_search_faq"
-        priority: 1
-      - rule: "action_search_uab_courses"
-        priority: 2
-  
-  - name: MemoizationPolicy
-    max_history: 3
-  
-  # TEDPolicy otimizado para diálogos complexos
-  - name: TEDPolicy
-    max_history: 5
-    epochs: 200  # Aumentado para melhorar aprendizado
-    hidden_layers_sizes:
-      text: [256, 128]
-      action: [128, 64]
-    constrain_similarities: true
-    batch_size: [32, 64]  # Tamanhos de batch para treino eficiente
-  
-  # Política para intenções inesperadas (útil para FAQs)
-  - name: UnexpecTEDIntentPolicy
-    max_history: 5
-    threshold: 0.15  # Limiar mais baixo para capturar variações
+- name: MemoizationPolicy
+- name: TEDPolicy
+  max_history: 2
+  epochs: 50
+- name: RulePolicy
+  core_fallback_threshold: 0.0  # Desativa fallback automático
+  enable_fallback_prediction: false
+assistant_id: 20250728-124659-relaxed-apartment
