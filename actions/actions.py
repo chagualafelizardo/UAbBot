@@ -7,7 +7,7 @@ from typing import Optional, Dict
 
 class ActionSmartSearch(Action):
     def name(self):
-        return "action_smart_search"
+        return "action_search_documents"
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
