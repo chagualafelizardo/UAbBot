@@ -13,6 +13,7 @@ import logging
 from typing import Optional, Dict, List, Tuple
 import hashlib
 
+
 # Configuração de logging
 logging.basicConfig(
     level=logging.INFO,
@@ -36,7 +37,7 @@ class Config:
     FALLBACK_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"  # Modelo alternativo
     MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
     OCR_MAX_PAGES = 10
-
+    
     @classmethod
     def initialize(cls):
         """Configura ambiente e verifica diretórios"""
