@@ -3,7 +3,11 @@ import pymongo
 import logging
 from pymongo.errors import PyMongoError
 import re
-from typing import Optional, Dict
+from typing import Dict, List, Optional
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+import os
+import threading
 
 class ActionSmartSearch(Action):
     def name(self):
@@ -11,169 +15,221 @@ class ActionSmartSearch(Action):
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        self.model = None
+        self.model_ready = False
+        self.min_similarity = 0.35
         
+        # Inicialização rápida do MongoDB
         try:
-            # Conexão com MongoDB
             self.client = pymongo.MongoClient(
                 "mongodb://root:root@uabbot-mongodb-1:27017/",
-                serverSelectionTimeoutMS=5000
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=10000,
+                socketTimeoutMS=10000
             )
             self.db = self.client["uab"]
             self.collection = self.db["documents"]
-            
-            # Verificar conexão
             self.client.admin.command('ping')
-            count = self.collection.count_documents({})
-            self.logger.info(f"Conexão OK. Coleção possui {count} documentos.")
+            self.logger.info("Conexão MongoDB estabelecida")
             
-            # Criar índice de texto composto
-            self._create_text_index()
-                
-        except PyMongoError as e:
-            self.logger.error(f"Erro MongoDB: {str(e)}")
+            # Cria índices em segundo plano
+            threading.Thread(target=self._create_indexes, daemon=True).start()
+            
+            # Carrega o modelo em segundo plano
+            threading.Thread(target=self._load_model, daemon=True).start()
+            
+        except Exception as e:
+            self.logger.error(f"Erro na inicialização: {str(e)}")
             raise
 
-    def _create_text_index(self):
-        """Cria um índice de texto composto de forma segura"""
+    def _load_model(self):
+        """Carrega o modelo em segundo plano"""
         try:
-            # Verifica se já existe algum índice de texto
-            existing_indexes = self.collection.index_information()
-            text_index_exists = any(
-                any('text' in str(field[1]) for field in idx_info['key'])
-                for idx_info in existing_indexes.values()
-            )
+            from sentence_transformers import SentenceTransformer
+            self.logger.info("Iniciando carregamento do modelo...")
             
-            if not text_index_exists:
-                # Cria índice composto com ambos os campos
-                self.collection.create_index([
-                    ("text_content", "text"),
-                    ("filename", "text")
-                ], default_language="portuguese")
-                self.logger.info("Índice de texto composto criado com sucesso")
-            else:
-                self.logger.info("Índice de texto já existe, mantendo o atual")
-                
+            # Modelo leve e rápido (1/4 do tamanho do anterior)
+            self.model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+            self.model.max_seq_length = 128  # Reduz ainda mais para performance
+            self.model_ready = True
+            self.logger.info("Modelo carregado com sucesso")
+            
         except Exception as e:
-            self.logger.error(f"Erro ao verificar/criar índices: {str(e)}")
-            # Continua mesmo sem índice para não bloquear a execução
+            self.logger.error(f"Erro ao carregar modelo: {str(e)}")
 
-    def identify_content_type(self, filename: str, content: str) -> str:
-        """Identifica o tipo de conteúdo baseado no nome do arquivo e conteúdo"""
-        if "faq" in filename.lower() or "perguntas frequentes" in content[:200].lower():
-            return "faq"
-        elif "curso" in filename.lower() or "licenciatura" in content.lower() or "mestrado" in content.lower():
-            return "curso"
-        elif "regulamento" in filename.lower() or "normas" in content.lower():
-            return "regulamento"
-        elif "admissão" in filename.lower() or "candidatura" in content.lower():
-            return "admissao"
-        else:
-            return "geral"
+    def _create_indexes(self):
+        """Cria índices em segundo plano"""
+        try:
+            if "text_content_text" not in self.collection.index_information():
+                self.collection.create_index(
+                    [("text_content", "text")],
+                    default_language="portuguese"
+                )
+                self.logger.info("Índice de texto criado")
+        except Exception as e:
+            self.logger.error(f"Erro ao criar índices: {str(e)}")
 
-    def extract_faq_answer(self, content: str, query: str) -> Optional[Dict]:
-        """Extrai resposta de FAQ formatada"""
-        for match in re.finditer(r'(\d+\.\s)(.*?\?)(.*?)(?=\d+\.\s|\Z)', content, re.DOTALL):
+    def _simple_search(self, query: str, docs: List[Dict]) -> Optional[Dict]:
+        """Busca textual simples enquanto o modelo não está pronto"""
+        best_match = None
+        highest_score = 0
+        query_lower = query.lower()
+        
+        for doc in docs:
+            content = doc.get("text_content", "").lower()
+            
+            # Verifica correspondência direta de palavras-chave
+            score = sum(1 for word in query_lower.split() if word in content) / len(query.split())
+            
+            if score > highest_score:
+                highest_score = score
+                best_match = doc
+                
+        return best_match if highest_score > 0.3 else None
+
+    def _extract_faq(self, content: str, query: str) -> Optional[Dict]:
+        """Extrai FAQ relevante usando regex simples"""
+        best_faq = None
+        highest_score = 0
+        
+        for match in re.finditer(r'(\d+\.\s)?(.*?\?)(.*?)(?=\d+\.\s|\Z)', content, re.DOTALL):
             question = match.group(2).strip()
-            if self.calculate_similarity(question, query) > 0.3:
-                return {
-                    'type': 'faq',
+            answer = match.group(3).strip()
+            
+            # Similaridade simples baseada em palavras-chave
+            score = sum(1 for word in query.lower().split() if word in question.lower()) / len(query.split())
+            
+            if score > highest_score:
+                highest_score = score
+                best_faq = {
                     'question': question,
-                    'answer': match.group(3).strip()
+                    'answer': answer,
+                    'score': score
                 }
-        return None
-
-    def extract_course_info(self, content: str, query: str) -> Optional[Dict]:
-        """Extrai informações sobre cursos"""
-        for match in re.finditer(r'(Curso|Licenciatura|Mestrado|Doutoramento)[^\n]+?\n(.+?)(?=\n\s*(Curso|Licenciatura|Mestrado|Doutoramento|\Z))', 
-                               content, re.DOTALL | re.IGNORECASE):
-            course_title = match.group(0).split('\n')[0].strip()
-            if self.calculate_similarity(course_title, query) > 0.3:
-                return {
-                    'type': 'curso',
-                    'title': course_title,
-                    'description': match.group(2).strip()
-                }
-        return None
-
-    def extract_general_info(self, content: str, query: str) -> Optional[Dict]:
-        """Extrai trecho relevante de documentos gerais"""
-        sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', content)
-        best_sentence = max(sentences, 
-                          key=lambda x: self.calculate_similarity(x, query), 
-                          default="")
-        if self.calculate_similarity(best_sentence, query) > 0.2:
-            return {
-                'type': 'geral',
-                'content': best_sentence
-            }
-        return None
-
-    def calculate_similarity(self, text: str, query: str) -> float:
-        """Calcula similaridade entre texto e consulta"""
-        text_words = set(re.sub(r'[^\w\s]', '', text.lower()).split())
-        query_words = set(re.sub(r'[^\w\s]', '', query.lower()).split())
-        return len(text_words & query_words) / len(query_words) if query_words else 0
-
-    def format_response(self, result: Dict, filename: str) -> str:
-        """Formata a resposta conforme o tipo de conteúdo"""
-        if result['type'] == 'faq':
-            return (f"📚 FAQ encontrada em {filename}:\n"
-                   f"❓ {result['question']}\n\n"
-                   f"💡 {self.clean_text(result['answer'])}")
         
-        elif result['type'] == 'curso':
-            return (f"🎓 Informação sobre cursos em {filename}:\n"
-                   f"📌 {result['title']}\n\n"
-                   f"ℹ️ {self.clean_text(result['description'])}")
-        
-        else:
-            return (f"📄 Documento: {filename}\n\n"
-                   f"🔍 Trecho relevante:\n{self.clean_text(result['content'])}")
+        return best_faq if highest_score > 0.3 else None
 
-    def clean_text(self, text: str, max_length: int = 500) -> str:
-        """Limpa e formata o texto"""
-        cleaned = ' '.join(text.split())
-        return cleaned[:max_length] + ("..." if len(cleaned) > max_length else "")
+    def _extract_course_info(self, content: str) -> List[Dict]:
+        """Extrai informações de cursos com regex otimizado"""
+        courses = []
+        for match in re.finditer(r'(Licenciatura|Mestrado|Doutoramento)[\s:-]+([^\n]+)', content, re.IGNORECASE):
+            courses.append({
+                'type': match.group(1),
+                'name': match.group(2).strip(),
+                'content': content[match.end():match.end()+300]  # Limita o conteúdo
+            })
+        return courses
 
     def run(self, dispatcher, tracker, domain):
         query = tracker.latest_message.get('text')
         self.logger.info(f"Processando consulta: '{query}'")
         
         try:
-            # Busca nos documentos (limita a 5 resultados)
+            # Busca textual inicial (rápida)
             docs = list(self.collection.find(
                 {"$text": {"$search": query}},
                 {"score": {"$meta": "textScore"}, "text_content": 1, "filename": 1}
-            ).sort([("score", {"$meta": "textScore"})]).limit(5))
+            ).sort([("score", {"$meta": "textScore"})]).limit(3))
             
             if not docs:
                 dispatcher.utter_message(text="Não encontrei informações sobre esse tópico.")
                 return []
             
-            responses = []
+            # Se o modelo ainda não está pronto, usa busca simples
+            if not self.model_ready:
+                self.logger.warning("Modelo não carregado ainda, usando busca simples")
+                best_doc = self._simple_search(query, docs)
+                
+                if best_doc:
+                    # Tenta extrair FAQ primeiro
+                    faq = self._extract_faq(best_doc['text_content'], query)
+                    if faq:
+                        response = f"📄 {best_doc.get('filename', 'documento')}\n\n"
+                        response += f"❓ {faq['question']}\n💡 {faq['answer'][:300]}..."
+                        dispatcher.utter_message(text=response)
+                        return []
+                    
+                    # Fallback para cursos se a pergunta for sobre cursos
+                    if any(w in query.lower() for w in ["curso", "licenciatura", "mestrado", "doutoramento"]):
+                        courses = self._extract_course_info(best_doc['text_content'])
+                        if courses:
+                            course = courses[0]
+                            response = f"🎓 {course['type']} em {course['name']}\n"
+                            response += f"📄 {best_doc.get('filename', 'documento')}\n"
+                            response += f"ℹ️ {course['content'][:300]}..."
+                            dispatcher.utter_message(text=response)
+                            return []
+                    
+                    # Fallback final: trecho mais relevante
+                    sentences = re.split(r'(?<=[.!?])\s+', best_doc['text_content'])
+                    if sentences:
+                        best_sentence = max(sentences, key=lambda x: len(x))[:300]
+                        dispatcher.utter_message(
+                            text=f"📄 {best_doc.get('filename', 'documento')}\n\n"
+                                 f"🔍 Trecho relevante:\n{best_sentence}..."
+                        )
+                        return []
+                
+                dispatcher.utter_message(text="Encontrei documentos relacionados, mas não informações específicas para sua pergunta.")
+                return []
+            
+            # Se o modelo está pronto, usa busca semântica
+            query_embedding = self.model.encode(query)
+            
+            best_match = None
+            highest_score = 0
+            
             for doc in docs:
                 content = doc.get("text_content", "")
-                filename = doc.get("filename", "documento")
-                content_type = self.identify_content_type(filename, content)
                 
-                result = None
-                if content_type == "faq":
-                    result = self.extract_faq_answer(content, query)
-                elif content_type == "curso":
-                    result = self.extract_course_info(content, query)
-                else:
-                    result = self.extract_general_info(content, query)
+                # Gera embedding sob demanda (com cache implícito)
+                doc_embedding = self.model.encode(content[:1000])  # Limita tamanho
                 
-                if result:
-                    responses.append(self.format_response(result, filename))
-                    if len(responses) >= 3:  # Limita a 3 respostas
-                        break
+                # Calcula similaridade
+                similarity = cosine_similarity([query_embedding], [doc_embedding])[0][0]
+                
+                if similarity > highest_score:
+                    highest_score = similarity
+                    best_match = {
+                        'doc': doc,
+                        'score': similarity
+                    }
             
-            if responses:
-                dispatcher.utter_message(text="\n\n---\n\n".join(responses))
-            else:
-                dispatcher.utter_message(text="Encontrei documentos relacionados, mas não informações específicas para sua pergunta.")
+            if best_match and highest_score > self.min_similarity:
+                doc = best_match['doc']
+                content = doc['text_content']
                 
+                # Prioriza FAQs
+                faq = self._extract_faq(content, query)
+                if faq:
+                    response = f"📄 {doc.get('filename', 'documento')}\n\n"
+                    response += f"❓ {faq['question']}\n💡 {faq['answer'][:300]}..."
+                    dispatcher.utter_message(text=response)
+                    return []
+                
+                # Busca por cursos se relevante
+                if any(w in query.lower() for w in ["curso", "licenciatura", "mestrado", "doutoramento"]):
+                    courses = self._extract_course_info(content)
+                    if courses:
+                        course = courses[0]
+                        response = f"🎓 {course['type']} em {course['name']}\n"
+                        response += f"📄 {doc.get('filename', 'documento')}\n"
+                        response += f"ℹ️ {course['content'][:300]}..."
+                        dispatcher.utter_message(text=response)
+                        return []
+                
+                # Fallback para trecho relevante
+                sentences = re.split(r'(?<=[.!?])\s+', content)
+                if sentences:
+                    best_sentence = max(sentences, key=lambda x: len(x))[:300]
+                    dispatcher.utter_message(
+                        text=f"📄 {doc.get('filename', 'documento')}\n\n"
+                             f"🔍 Trecho relevante:\n{best_sentence}..."
+                    )
+                    return []
+            
+            dispatcher.utter_message(text="Encontrei documentos relacionados, mas não informações específicas para sua pergunta.")
+            
         except Exception as e:
             self.logger.error(f"Erro na busca: {str(e)}", exc_info=True)
             dispatcher.utter_message(text="Desculpe, ocorreu um erro ao processar sua solicitação.")
