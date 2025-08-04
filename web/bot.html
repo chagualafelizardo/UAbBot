@@ -318,22 +318,6 @@
       margin-bottom: 6px;
     }
 
-    .details-btn {
-      background-color: transparent;
-      color: #007bff;
-      border: 1px solid #007bff;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      margin-top: 8px;
-      transition: all 0.2s ease;
-    }
-
-    .details-btn:hover {
-      background-color: rgba(200, 230, 255, 0.5); /* Azul um pouco mais intenso */
-    }
-
     .option-btn {
       background-color: transparent;
       color: #333;
@@ -346,7 +330,7 @@
     }
 
     .option-btn:hover {
-      background-color: rgba(200, 230, 255, 0.3); /* Azul muito claro e transparente */
+      background-color: rgba(200, 230, 255, 0.3);
       border-color: #bbb;
     }
 
@@ -371,7 +355,7 @@
     }
 
     .menu-btn:hover {
-      background-color: rgba(200, 230, 255, 0.3); /* Azul muito claro e transparente */
+      background-color: rgba(200, 230, 255, 0.3);
       border-color: #bbb;
     }
 
@@ -716,7 +700,7 @@
         },
         body: JSON.stringify({ 
           sender: "user_" + Date.now(),
-          message: messageToSend,  // Envia o texto em vez do payload
+          message: messageToSend,
           metadata: {
             language: currentLanguage
           }
@@ -764,21 +748,21 @@
       emojiPicker.style.display = emojiPicker.style.display === "none" ? "flex" : "none";
     }
 
-  function clearChat() {
-    chat.innerHTML = "";
-    hasShownWelcome = false; // Isso fará com que a mensagem de boas-vindas seja mostrada novamente
-    
-    // Mostra a mensagem de chat apagado
-    const clearMsg = document.createElement("div");
-    clearMsg.className = "msg bot";
-    clearMsg.innerHTML = "<p>Histórico de chat apagado. Como posso ajudar você?</p>";
-    chat.appendChild(clearMsg);
-    
-    // Mostra novamente as opções iniciais
-    showWelcomeMessage();
-    
-    chat.scrollTop = chat.scrollHeight;
-  }
+    function clearChat() {
+      chat.innerHTML = "";
+      hasShownWelcome = false;
+      
+      // Mostra a mensagem de chat apagado
+      const clearMsg = document.createElement("div");
+      clearMsg.className = "msg bot";
+      clearMsg.innerHTML = "<p>Histórico de chat apagado. Como posso ajudar você?</p>";
+      chat.appendChild(clearMsg);
+      
+      // Mostra novamente as opções iniciais
+      showWelcomeMessage();
+      
+      chat.scrollTop = chat.scrollHeight;
+    }
 
     function appendMessage(sender, text, options = null) {
       const msgElement = document.createElement("div");
@@ -823,15 +807,7 @@
               courseTitle.className = "course-title";
               courseTitle.innerHTML = `<span class="course-number">${match[1]}</span> ${match[2]}`;
               
-              const detailsBtn = document.createElement("button");
-              detailsBtn.className = "details-btn";
-              detailsBtn.textContent = "Ver Detalhes";
-              detailsBtn.onclick = () => {
-                sendSpecialCommand(`/get_course_details{"course_name":"${match[2].trim()}"}`);
-              };
-              
               courseBubble.appendChild(courseTitle);
-              courseBubble.appendChild(detailsBtn);
               listContainer.appendChild(courseBubble);
             } else if (line.trim()) {
               const textLine = document.createElement("p");
@@ -888,21 +864,11 @@
       .then(data => {
           hideTyping();
           if (data && data.length > 0) {
-              const isCourseDetails = data.some(item => 
-                  item.text && item.text.includes("Descrição:") || 
-                  item.text.includes("Duração:") || 
-                  item.text.includes("Coordenação:")
-              );
-              
-              if (!isCourseDetails) {
-                  appendMessage("bot", "Não encontrei detalhes específicos para este curso. Por favor, tente novamente ou consulte nosso site.");
-              } else {
-                  data.forEach(response => {
-                      if (response.text) {
-                          appendMessage("bot", response.text);
-                      }
-                  });
-              }
+              data.forEach(response => {
+                  if (response.text) {
+                      appendMessage("bot", response.text);
+                  }
+              });
           } else {
               appendMessage("bot", "Não recebi informações sobre este curso. Por favor, tente novamente.");
           }
@@ -970,7 +936,6 @@
           body: JSON.stringify({ 
             sender: "user_" + Date.now(),
             message: message,
-            // Adicione estas linhas para forçar a intenção correta:
             intent: {
               name: "general_query",
               confidence: 0.99
