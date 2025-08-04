@@ -1,11 +1,18 @@
 version: "3.1"
 
 intents:
+  - greet
   - general_query
 
 actions:
-  - action_search_documents  # Esta linha está faltando no seu domínio
+  - action_search_documents
 
-# responses:
-#   utter_default:
-#     - text: "Processando sua solicitação..."
+responses:
+  utter_greet:
+    - text: "Olá! Como posso te ajudar hoje?"
+    - text: "Oi! Estou aqui para te ajudar."
+    - text: "Seja bem-vindo! Em que posso ajudar?"
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

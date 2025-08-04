@@ -1,8 +1,14 @@
 version: "3.1"
 
 rules:
-- rule: Responder a consultas
-  steps:
-  - intent: general_query
-  - action: action_search_documents
-  - active_loop: null  # Adicione esta linha para evitar loops
+
+  - rule: Saudação padrão
+    steps:
+      - intent: greet
+      - action: utter_greet
+
+  - rule: Responder a consultas
+    steps:
+      - intent: general_query
+      - action: action_search_documents
+      - active_loop: null  # Finaliza qualquer loop ativo, se houver

@@ -12,7 +12,7 @@ pipeline:
 - name: DIETClassifier
   epochs: 50
 - name: FallbackClassifier
-  threshold: 0.1
+  threshold: 0.3
 
 policies:
 - name: MemoizationPolicy

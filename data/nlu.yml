@@ -1,14 +1,26 @@
 version: "3.1"
 
 nlu:
-- intent: general_query
-  examples: |
-    - [.*]
-    - O que diz sobre [.*]?
-    - Me mostre informações sobre [.*]
-    - Como funciona [.*]?
-    - Quero saber sobre [.*]
-    - Explique [.*]
-    - Preciso de ajuda com [.*]
-    - Onde encontro [.*]?
-    - Qual é o procedimento para [.*]?
+
+  - intent: greet
+    examples: |
+      - oi
+      - olá
+      - bom dia
+      - boa tarde
+      - e aí
+      - tudo bem?
+      - como vai?
+      - ajuda
+      - Preciso de ajuda
+
+  - intent: general_query
+    examples: |
+      - O que diz sobre inscrição?
+      - Me mostre informações sobre provas finais
+      - Como funciona a candidatura?
+      - Quero saber sobre os prazos acadêmicos
+      - Explique o processo de matrícula
+      - Preciso de ajuda com a avaliação
+      - Onde encontro o regulamento?
+      - Qual é o procedimento para pedir isenção de disciplina?
