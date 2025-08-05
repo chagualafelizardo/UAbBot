@@ -436,12 +436,18 @@ class ActionSmartSearch(Action):
             if self._is_faq_query(query) and rag_results:
                 faq_match = self._find_best_faq_match(query, rag_results)
                 if faq_match:
-                    dispatcher.utter_message(text=self._format_faq_response(faq_match))
+                    dispatcher.utter_message(
+                        text=self._format_faq_response(faq_match),
+                        metadata={"type_speed": 30}  # Mais rápido para FAQs
+                    )
                     return []
             
             # Se encontrou resultados RAG, mostra o mais relevante
             if rag_results:
-                dispatcher.utter_message(text=self._format_general_response(rag_results[0], query))
+                dispatcher.utter_message(
+                    text=self._format_general_response(rag_results[0], query),
+                    metadata={"type_speed": 30}  # Velocidade padrão
+                )
                 return []
             
             # Fallback para busca textual
@@ -456,15 +462,20 @@ class ActionSmartSearch(Action):
                         'filename': docs[0]['filename'],
                         'content': docs[0]['text_content'],
                         'similarity': 0.5
-                    }, query)
+                    }, query),
+                    metadata={"type_speed": 30}  # Adicionado metadata
                 )
             else:
-                dispatcher.utter_message(text="Não encontrei informações sobre esse tópico. Poderia reformular sua pergunta?")
+                dispatcher.utter_message(
+                    text="Não encontrei informações sobre esse tópico. Poderia reformular sua pergunta?",
+                    metadata={"type_speed": 30}  # Adicionado metadata
+                )
                 
         except Exception as e:
             self.logger.error(f"Erro na busca: {str(e)}", exc_info=True)
             dispatcher.utter_message(
-                text="Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente."
+                text="Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.",
+                metadata={"type_speed": 30}  # Adicionado metadata
             )
 
         return []

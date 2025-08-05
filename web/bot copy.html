@@ -318,22 +318,6 @@
       margin-bottom: 6px;
     }
 
-    .details-btn {
-      background-color: transparent;
-      color: #007bff;
-      border: 1px solid #007bff;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      margin-top: 8px;
-      transition: all 0.2s ease;
-    }
-
-    .details-btn:hover {
-      background-color: rgba(200, 230, 255, 0.5); /* Azul um pouco mais intenso */
-    }
-
     .option-btn {
       background-color: transparent;
       color: #333;
@@ -346,7 +330,7 @@
     }
 
     .option-btn:hover {
-      background-color: rgba(200, 230, 255, 0.3); /* Azul muito claro e transparente */
+      background-color: rgba(200, 230, 255, 0.3);
       border-color: #bbb;
     }
 
@@ -371,7 +355,7 @@
     }
 
     .menu-btn:hover {
-      background-color: rgba(200, 230, 255, 0.3); /* Azul muito claro e transparente */
+      background-color: rgba(200, 230, 255, 0.3);
       border-color: #bbb;
     }
 
@@ -510,6 +494,34 @@
       color: #6e6e80;
       padding: 5px 15px;
       font-weight: 500;
+    }
+
+    .feedback-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .feedback-btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .feedback-btn:hover {
+      opacity: 0.8;
+    }
+
+    .feedback-yes {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .feedback-no {
+      background-color: #f44336;
+      color: white;
     }
 
     /* Responsividade */
@@ -655,21 +667,105 @@
     function showWelcomeMessage() {
       const welcomeMsg = document.createElement("div");
       welcomeMsg.className = "msg bot";
-      welcomeMsg.innerHTML = `
-        <p>Olá! Eu sou o UAbBot, o seu assistente virtual. Como posso ajudar você hoje? 👋</p>
-        <p>O que deseja saber?</p>
-        <div class="menu-options">
-          <button class="menu-btn" onclick="sendMenuOption('admission_info')">1. Admissão</button>
-          <button class="menu-btn" onclick="sendMenuOption('enrollment_info')">2. Matrículas</button>
-          <button class="menu-btn" onclick="sendMenuOption('tuition_info')">3. Propinas</button>
-          <button class="menu-btn" onclick="sendMenuOption('academic_support')">4. Apoio Académico</button>
-          <button class="menu-btn" onclick="sendMenuOption('ask_uab_courses')">5. Cursos</button>
-          <button class="menu-btn" onclick="sendMenuOption('scholarship_info')">6. Bolsas</button>
-          <button class="menu-btn" onclick="sendMenuOption('research_info')">7. Investigação</button>
-        </div>
-      `;
       chat.appendChild(welcomeMsg);
-      chat.scrollTop = chat.scrollHeight;
+      
+      const welcomeText = `Olá! Eu sou o UAbBot, o seu assistente virtual. Como posso ajudar você hoje? 👋\nO que deseja saber?`;
+      const menuOptions = [
+        { title: "1. Admissão", payload: "admission_info" },
+        { title: "2. Matrículas", payload: "enrollment_info" },
+        { title: "3. Propinas", payload: "tuition_info" },
+        { title: "4. Apoio Académico", payload: "academic_support" },
+        { title: "5. Cursos", payload: "ask_uab_courses" },
+        { title: "6. Bolsas", payload: "scholarship_info" },
+        { title: "7. Investigação", payload: "research_info" }
+      ];
+      
+      // Typewriter para o texto principal
+      let i = 0;
+      const textSpeed = 30;
+      function typeWriterText() {
+        if (i < welcomeText.length) {
+          welcomeMsg.innerHTML = welcomeText.substring(0, i+1).replace(/\n/g, '<br>');
+          i++;
+          setTimeout(typeWriterText, textSpeed);
+        } else {
+          // Quando o texto termina, começa a mostrar os botões um por um
+          const menuContainer = document.createElement("div");
+          menuContainer.className = "menu-options";
+          welcomeMsg.appendChild(menuContainer);
+          
+          let j = 0;
+          const buttonSpeed = 500;
+          
+          function typeWriterButtons() {
+            if (j < menuOptions.length) {
+              const btn = document.createElement("button");
+              btn.className = "menu-btn";
+              btn.textContent = menuOptions[j].title;
+              
+              // Efeito de fade-in para o botão
+              btn.style.opacity = '0';
+              btn.style.transition = 'opacity 0.3s ease';
+              
+              // CORREÇÃO: Criamos uma cópia local do payload atual
+              const currentPayload = menuOptions[j].payload;
+              
+              // Vinculação correta do evento
+              btn.addEventListener('click', () => {
+                showTyping();
+                
+                if (currentPayload === 'ask_uab_courses') {
+                  setTimeout(() => {
+                    hideTyping();
+                    showCourseTypesMenu();
+                  }, 800);
+                } else {
+                  fetch("http://localhost:5005/webhooks/rest/webhook", {
+                    method: "POST",
+                    headers: { 
+                      "Content-Type": "application/json",
+                      "Accept": "application/json"
+                    },
+                    body: JSON.stringify({ 
+                      sender: "user_" + Date.now(),
+                      message: currentPayload,
+                      metadata: { language: currentLanguage }
+                    })
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    hideTyping();
+                    if (data && data.length > 0) {
+                      data.forEach(response => {
+                        if (response.text) appendMessage("bot", response.text);
+                      });
+                    }
+                  })
+                  .catch(error => {
+                    hideTyping();
+                    console.error("Erro:", error);
+                  });
+                }
+              });
+              
+              menuContainer.appendChild(btn);
+              
+              // Animação de aparecimento do botão
+              setTimeout(() => {
+                btn.style.opacity = '1';
+              }, 10);
+              
+              j++;
+              setTimeout(typeWriterButtons, buttonSpeed);
+            }
+          }
+          
+          typeWriterButtons();
+        }
+        chat.scrollTop = chat.scrollHeight;
+      }
+      
+      typeWriterText();
     }
 
     function showCourseTypesMenu() {
@@ -716,7 +812,7 @@
         },
         body: JSON.stringify({ 
           sender: "user_" + Date.now(),
-          message: messageToSend,  // Envia o texto em vez do payload
+          message: messageToSend,
           metadata: {
             language: currentLanguage
           }
@@ -727,9 +823,10 @@
         hideTyping();
         if (data && data.length > 0) {
           data.forEach(response => {
-            if (response.text) {
-              appendMessage("bot", response.text);
-            }
+              if (response.text) {
+                  const metadata = response.metadata || {};
+                  appendMessage("bot", response.text, null, metadata);
+              }
           });
         }
       })
@@ -764,102 +861,128 @@
       emojiPicker.style.display = emojiPicker.style.display === "none" ? "flex" : "none";
     }
 
-  function clearChat() {
-    chat.innerHTML = "";
-    hasShownWelcome = false; // Isso fará com que a mensagem de boas-vindas seja mostrada novamente
-    
-    // Mostra a mensagem de chat apagado
-    const clearMsg = document.createElement("div");
-    clearMsg.className = "msg bot";
-    clearMsg.innerHTML = "<p>Histórico de chat apagado. Como posso ajudar você?</p>";
-    chat.appendChild(clearMsg);
-    
-    // Mostra novamente as opções iniciais
-    showWelcomeMessage();
-    
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-    function appendMessage(sender, text, options = null) {
-      const msgElement = document.createElement("div");
-      msgElement.className = `msg ${sender}`;
+    function clearChat() {
+      chat.innerHTML = "";
+      hasShownWelcome = false;
       
-      // Verifica se tem opções de botões
-      if (options && options.buttons) {
-        msgElement.innerHTML = `<p>${text}</p>`;
+      // Mostra a mensagem de chat apagado
+      const clearMsg = document.createElement("div");
+      clearMsg.className = "msg bot";
+      clearMsg.innerHTML = "<p>Histórico de chat apagado. Como posso ajudar você?</p>";
+      chat.appendChild(clearMsg);
+      
+      // Mostra novamente as opções iniciais
+      showWelcomeMessage();
+      
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function appendMessage(sender, text, options = null, metadata = {}) {
+        const msgElement = document.createElement("div");
+        msgElement.className = `msg ${sender}`;
         
+        // Adiciona o elemento vazio ao chat imediatamente
+        chat.appendChild(msgElement);
+        
+        // Se for mensagem do usuário, mostra imediatamente sem efeito
+        if (sender !== "bot") {
+            renderFullMessage(msgElement, text, options);
+            return;
+        }
+
+        // Efeito de digitação para mensagens do bot
+        const speed = metadata.type_speed || 20; // Velocidade padrão 20ms
+        
+        let i = 0;
+        const fullText = text;
+        const hasOptions = options && options.buttons;
+        
+        function typeWriter() {
+            if (i < fullText.length) {
+                // Renderiza parcialmente
+                renderPartialMessage(msgElement, fullText.substring(0, i + 1), options);
+                i++;
+                setTimeout(typeWriter, speed);
+                chat.scrollTop = chat.scrollHeight;
+            } else if (hasOptions) {
+                // Adiciona botões após terminar o texto
+                renderButtons(msgElement, options);
+            }
+        }
+        
+        typeWriter();
+    }
+
+    function renderPartialMessage(element, partialText, options) {
+        // Limpa o conteúdo
+        element.innerHTML = '';
+        
+        // Se for uma lista de cursos
+        if (partialText.match(/^(\d+\.\s.+(\n|$))+/gm) || partialText.match(/^-\s\d+\.\s.+(\n|$)/gm)) {
+            const lines = partialText.split('\n');
+            const listContainer = document.createElement("div");
+            
+            lines.forEach(line => {
+                if (line.trim()) {
+                    const cleanedLine = line.replace(/^\s*-\s*/, '').trim();
+                    const match = cleanedLine.match(/^(\d+\.)\s*(.+)/);
+                    
+                    if (match) {
+                        const courseBubble = document.createElement("div");
+                        courseBubble.className = "course-bubble";
+                        
+                        const courseTitle = document.createElement("div");
+                        courseTitle.className = "course-title";
+                        courseTitle.innerHTML = `<span class="course-number">${match[1]}</span> ${match[2]}`;
+                        
+                        courseBubble.appendChild(courseTitle);
+                        listContainer.appendChild(courseBubble);
+                    } else if (line.trim()) {
+                        const textLine = document.createElement("p");
+                        textLine.textContent = line;
+                        textLine.style.margin = "4px 0";
+                        listContainer.appendChild(textLine);
+                    }
+                }
+            });
+            
+            element.appendChild(listContainer);
+        } 
+        // Se contém HTML
+        else if (/<[a-z][\s\S]*>/i.test(partialText)) {
+            element.innerHTML = partialText;
+        }
+        // Mensagem normal
+        else {
+            element.innerHTML = partialText.replace(/\n/g, '<br>');
+        }
+    }
+
+    function renderFullMessage(element, text, options) {
+        renderPartialMessage(element, text, options);
+        
+        if (options && options.buttons) {
+            renderButtons(element, options);
+        }
+    }
+
+    function renderButtons(element, options) {
         const buttonsContainer = document.createElement("div");
         buttonsContainer.className = "buttons-container";
         
         options.buttons.forEach(button => {
-          const btn = document.createElement("button");
-          btn.className = "option-btn";
-          btn.textContent = button.title;
-          btn.onclick = () => {
-            if (button.payload) {
-              sendSpecialCommand(button.payload);
-            }
-          };
-          buttonsContainer.appendChild(btn);
+            const btn = document.createElement("button");
+            btn.className = "option-btn";
+            btn.textContent = button.title;
+            btn.onclick = () => {
+                if (button.payload) {
+                    sendSpecialCommand(button.payload);
+                }
+            };
+            buttonsContainer.appendChild(btn);
         });
         
-        msgElement.appendChild(buttonsContainer);
-      }
-      // Verifica se é uma lista de cursos
-      else if (text.match(/^(\d+\.\s.+(\n|$))+/gm) || text.match(/^-\s\d+\.\s.+(\n|$)/gm)) {
-        const lines = text.split('\n');
-        const listContainer = document.createElement("div");
-        
-        lines.forEach(line => {
-          if (line.trim()) {
-            const cleanedLine = line.replace(/^\s*-\s*/, '').trim();
-            const match = cleanedLine.match(/^(\d+\.)\s*(.+)/);
-            
-            if (match) {
-              const courseBubble = document.createElement("div");
-              courseBubble.className = "course-bubble";
-              
-              const courseTitle = document.createElement("div");
-              courseTitle.className = "course-title";
-              courseTitle.innerHTML = `<span class="course-number">${match[1]}</span> ${match[2]}`;
-              
-              const detailsBtn = document.createElement("button");
-              detailsBtn.className = "details-btn";
-              detailsBtn.textContent = "Ver Detalhes";
-              detailsBtn.onclick = () => {
-                sendSpecialCommand(`/get_course_details{"course_name":"${match[2].trim()}"}`);
-              };
-              
-              courseBubble.appendChild(courseTitle);
-              courseBubble.appendChild(detailsBtn);
-              listContainer.appendChild(courseBubble);
-            } else if (line.trim()) {
-              const textLine = document.createElement("p");
-              textLine.textContent = line;
-              textLine.style.margin = "4px 0";
-              listContainer.appendChild(textLine);
-            }
-          }
-        });
-        
-        msgElement.appendChild(listContainer);
-      } 
-      // Verifica se contém HTML
-      else if (/<[a-z][\s\S]*>/i.test(text)) {
-        msgElement.innerHTML = text;
-      }
-      // Mensagem normal
-      else {
-        msgElement.innerHTML = text.replace(/\n/g, '<br>');
-      }
-      
-      chat.appendChild(msgElement);
-      chat.scrollTop = chat.scrollHeight;
-      
-      if (sender === "bot" && !chatContainer.classList.contains("active")) {
-        hasNewMessage = true;
-        updateNotificationBadge();
-      }
+        element.appendChild(buttonsContainer);
     }
 
     function sendSpecialCommand(command) {
@@ -888,21 +1011,12 @@
       .then(data => {
           hideTyping();
           if (data && data.length > 0) {
-              const isCourseDetails = data.some(item => 
-                  item.text && item.text.includes("Descrição:") || 
-                  item.text.includes("Duração:") || 
-                  item.text.includes("Coordenação:")
-              );
-              
-              if (!isCourseDetails) {
-                  appendMessage("bot", "Não encontrei detalhes específicos para este curso. Por favor, tente novamente ou consulte nosso site.");
-              } else {
-                  data.forEach(response => {
-                      if (response.text) {
-                          appendMessage("bot", response.text);
-                      }
-                  });
-              }
+            data.forEach(response => {
+                if (response.text) {
+                    const metadata = response.metadata || {};
+                    appendMessage("bot", response.text, null, metadata);
+                }
+            });
           } else {
               appendMessage("bot", "Não recebi informações sobre este curso. Por favor, tente novamente.");
           }
@@ -970,7 +1084,6 @@
           body: JSON.stringify({ 
             sender: "user_" + Date.now(),
             message: message,
-            // Adicione estas linhas para forçar a intenção correta:
             intent: {
               name: "general_query",
               confidence: 0.99
@@ -988,9 +1101,10 @@
         
         if (data && data.length > 0) {
           data.forEach(response => {
-            if (response.text) {
-              appendMessage("bot", response.text);
-            }
+              if (response.text) {
+                  const metadata = response.metadata || {};
+                  appendMessage("bot", response.text, null, metadata);
+              }
           });
         } else {
           appendMessage("bot", "Não entendi. Poderia reformular?");

@@ -1,11 +1,25 @@
 version: "3.1"
 
 stories:
-
   - story: História simples de saudação
     steps:
       - intent: greet
       - action: utter_greet
+
+  - story: Agradecimento
+    steps:
+      - intent: thank
+      - action: utter_thank
+
+  - story: Despedida
+    steps:
+      - intent: goodbye
+      - action: utter_goodbye
+
+  - story: Esclarecer dúvida
+    steps:
+      - intent: doubt
+      - action: utter_doubt
 
   - story: Fluxo de consulta genérica
     steps:

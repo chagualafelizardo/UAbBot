@@ -1,18 +1,57 @@
 version: "3.1"
 
 nlu:
-
   - intent: greet
     examples: |
       - oi
       - olá
       - bom dia
       - boa tarde
+      - boa noite
       - e aí
       - tudo bem?
       - como vai?
       - ajuda
       - Preciso de ajuda
+
+  - intent: thank
+    examples: |
+      - obrigado
+      - obrigada
+      - muito obrigado
+      - muito obrigada
+      - agradeço
+      - valeu
+      - obrigado pela ajuda
+      - agradeço a atenção
+      - obrigado mesmo
+      - muito obrigado pela informação
+
+  - intent: goodbye
+    examples: |
+      - tchau
+      - até logo
+      - até mais
+      - adeus
+      - até breve
+      - até amanhã
+      - falou
+      - vou sair
+      - encerrar
+      - finalizar
+
+  - intent: doubt
+    examples: |
+      - não entendi
+      - pode repetir?
+      - como assim?
+      - não compreendi
+      - explica melhor
+      - pode esclarecer?
+      - não ficou claro
+      - poderia reformular?
+      - não sei se entendi
+      - pode explicar de outra forma?
 
   - intent: general_query
     examples: |

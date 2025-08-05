@@ -2,9 +2,16 @@ version: "3.1"
 
 intents:
   - greet
+  - thank
+  - goodbye
+  - doubt
   - general_query
 
 actions:
+  - utter_greet
+  - utter_thank
+  - utter_goodbye
+  - utter_doubt
   - action_search_documents
 
 responses:
@@ -12,6 +19,21 @@ responses:
     - text: "Olá! Como posso te ajudar hoje?"
     - text: "Oi! Estou aqui para te ajudar."
     - text: "Seja bem-vindo! Em que posso ajudar?"
+
+  utter_thank:
+    - text: "De nada! Estou à disposição para ajudar."
+    - text: "Não há de quê! Se precisar de mais algo, é só chamar."
+    - text: "Fico feliz em ajudar! Volte sempre que precisar."
+
+  utter_goodbye:
+    - text: "Até logo! Volte sempre que precisar."
+    - text: "Tchau! Foi um prazer ajudar."
+    - text: "Até mais! Se tiver outra dúvida, estarei aqui."
+
+  utter_doubt:
+    - text: "Claro, vou explicar de outra forma. O que exatamente não ficou claro?"
+    - text: "Sem problemas, posso tentar explicar novamente. Qual parte você gostaria que eu detalhasse?"
+    - text: "Vou reformular a explicação. O que você gostaria de entender melhor?"
 
 session_config:
   session_expiration_time: 60

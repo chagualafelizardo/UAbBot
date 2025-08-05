@@ -1,14 +1,28 @@
 version: "3.1"
 
 rules:
-
   - rule: Saudação padrão
     steps:
       - intent: greet
       - action: utter_greet
 
+  - rule: Agradecimento
+    steps:
+      - intent: thank
+      - action: utter_thank
+
+  - rule: Despedida
+    steps:
+      - intent: goodbye
+      - action: utter_goodbye
+
+  - rule: Esclarecer dúvida
+    steps:
+      - intent: doubt
+      - action: utter_doubt
+
   - rule: Responder a consultas
     steps:
       - intent: general_query
       - action: action_search_documents
-      - active_loop: null  # Finaliza qualquer loop ativo, se houver
+      - active_loop: null
