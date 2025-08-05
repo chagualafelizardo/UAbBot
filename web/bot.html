@@ -580,6 +580,48 @@
         opacity: 0.8;
       }
     }
+
+    /* Estilo para as partes da resposta */
+  .response-part {
+        margin-bottom: 12px;
+        display: block;
+    }
+
+    .response-question {
+        color: #2c3e50;
+        font-weight: 500;
+    }
+
+    .response-answer {
+        color: #34495e;
+        white-space: pre-wrap;
+    }
+
+    .response-confirmation {
+        color: #7f8c8d;
+        font-style: italic;
+    }
+
+    /* Estilos para as partes da resposta FAQ */
+    .faq-question {
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .faq-answer {
+        color: #34495e;
+        line-height: 1.5;
+        margin: 12px 0;
+        white-space: pre-wrap;
+    }
+
+    .faq-confirmation {
+        color: #7f8c8d;
+        font-style: italic;
+        margin-top: 12px;
+    }
+
     /* Responsividade */
     @media (max-width: 768px) {
       .history-panel {
@@ -672,6 +714,11 @@
     let isTyping = false;
     let hasNewMessage = false;
     let hasShownWelcome = false;
+
+    // Variável global para controlar o estado de digitação
+    let messageQueue = [];
+    let isProcessingQueue = false;
+
 
     // Emojis disponíveis
     const emojis = [
@@ -1006,39 +1053,90 @@
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function appendMessage(sender, text, options = null, metadata = {}) {
-        const msgElement = document.createElement("div");
-        msgElement.className = `msg ${sender}`;
+    function processMessageQueue() {
+        if (isProcessingQueue || messageQueue.length === 0) return;
         
-        // Adiciona o elemento vazio ao chat imediatamente
+        isProcessingQueue = true;
+        const { message, metadata, resolve } = messageQueue.shift();
+        
+        const msgElement = document.createElement("div");
+        msgElement.className = "msg bot";
         chat.appendChild(msgElement);
         
-        // Se for mensagem do usuário, mostra imediatamente sem efeito
-        if (sender !== "bot") {
-            renderFullMessage(msgElement, text, options);
-            return;
-        }
-
-        // Efeito de digitação para mensagens do bot
-        const speed = metadata.type_speed || 20; // Velocidade padrão 20ms
-        
+        const typingSpeed = metadata.type_speed || 20;
         let i = 0;
-        const fullText = text;
-        const hasOptions = options && options.buttons;
         
         function typeWriter() {
-            if (i < fullText.length) {
-                // Renderiza parcialmente
-                renderPartialMessage(msgElement, fullText.substring(0, i + 1), options);
+            if (i < message.length) {
+                msgElement.innerHTML = message.substring(0, i+1).replace(/\n/g, '<br>');
                 i++;
-                setTimeout(typeWriter, speed);
-                chat.scrollTop = chat.scrollHeight;
-            } else if (hasOptions) {
-                // Adiciona botões após terminar o texto
-                renderButtons(msgElement, options);
+                setTimeout(typeWriter, typingSpeed);
+            } else {
+                // Quando terminar de digitar esta parte
+                resolve();
+                
+                // Verifica se há mais mensagens na fila
+                setTimeout(() => {
+                    isProcessingQueue = false;
+                    processMessageQueue();
+                }, metadata.typing_delay || 500); // Pequena pausa entre mensagens
             }
         }
         
+        typeWriter();
+    }
+
+    function appendMessage(sender, text, options = null, metadata = {}) {
+        if (sender !== "bot") {
+            // Mensagens do usuário são mostradas imediatamente
+            const msgElement = document.createElement("div");
+            msgElement.className = "msg user";
+            msgElement.innerHTML = text.replace(/\n/g, '<br>');
+            chat.appendChild(msgElement);
+            return;
+        }
+
+        // Para mensagens do bot, usamos o sistema de fila
+        return new Promise((resolve) => {
+            messageQueue.push({
+                message: text,
+                metadata: metadata,
+                resolve: resolve
+            });
+            
+            if (!isProcessingQueue) {
+                processMessageQueue();
+            }
+        });
+    }
+
+    function renderStructuredResponse(element, text, metadata) {
+        // Limpa o elemento
+        element.innerHTML = '';
+        
+        // Adiciona o texto com efeito de digitação
+        typeWriterEffect(element, text, 20, () => {
+            // Callback quando termina de digitar
+            if (metadata.typing_delay) {
+                showTyping();
+                setTimeout(() => {
+                    hideTyping();
+                }, metadata.typing_delay);
+            }
+        });
+    }
+
+    function typeWriterEffect(element, text, speed, onComplete = null) {
+        let i = 0;
+        function typeWriter() {
+            if (i < text.length) {
+                element.innerHTML = text.substring(0, i+1).replace(/\n/g, '<br>');
+                i++;
+                setTimeout(typeWriter, speed);
+            } else if (onComplete) {
+                onComplete();
+            }
+        }
         typeWriter();
     }
 
@@ -1247,54 +1345,46 @@
       }
     }
 
+    // Modifique a função sendMessage para lidar com Promises
     async function sendMessage() {
-      const message = input.value.trim();
-      if (!message) return;
+        const message = input.value.trim();
+        if (!message) return;
 
-      appendMessage("user", message);
-      input.value = "";
-      showTyping();
-
-      try {
-        const response = await fetch("http://localhost:5005/webhooks/rest/webhook", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({ 
-            sender: "user_" + Date.now(),
-            message: message,
-            intent: {
-              name: "general_query",
-              confidence: 0.99
-            },
-            metadata: {
-              language: currentLanguage
-            }
-          })
-        });
-
-        if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
-
-        const data = await response.json();
-        hideTyping();
+        // Mostra mensagem do usuário imediatamente
+        appendMessage("user", message);
+        input.value = "";
         
-        if (data && data.length > 0) {
-          data.forEach(response => {
-              if (response.text) {
-                  const metadata = response.metadata || {};
-                  appendMessage("bot", response.text, null, metadata);
-              }
-          });
-        } else {
-          appendMessage("bot", "Não entendi. Poderia reformular?");
+        // Mostra indicador de digitação
+        showTyping();
+        
+        try {
+            const response = await fetch("http://localhost:5005/webhooks/rest/webhook", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({ 
+                    sender: "user_" + Date.now(),
+                    message: message,
+                    metadata: { language: currentLanguage }
+                })
+            });
+
+            const data = await response.json();
+            hideTyping();
+            
+            // Processa cada mensagem sequencialmente
+            for (const responseMsg of data) {
+                if (responseMsg.text) {
+                    await appendMessage("bot", responseMsg.text, null, responseMsg.metadata || {});
+                }
+            }
+        } catch (error) {
+            hideTyping();
+            console.error("Erro:", error);
+            await appendMessage("bot", `Desculpe, ocorreu um erro: ${error.message}`);
         }
-      } catch (error) {
-        hideTyping();
-        console.error("Erro:", error);
-        appendMessage("bot", `Desculpe, ocorreu um erro: ${error.message}`);
-      }
     }
 
     // Event Listeners

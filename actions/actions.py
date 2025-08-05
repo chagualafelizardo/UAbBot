@@ -339,19 +339,27 @@ class ActionSmartSearch(Action):
         }
 
     def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
-        """Formata resposta para FAQ encontrada em partes sequenciais"""
+        """Formata resposta para FAQ em partes completamente separadas"""
         return [
             {
                 'text': f"❓ **Pergunta encontrada em {faq_match['filename']}:**\n{faq_match['question']}",
-                'metadata': {"type_speed": 20, "delay": 500}  # Mostra rápido, com pequeno atraso
+                'metadata': {
+                    'response_part': 'question',
+                    'complete_before_next': True  # Indica que deve terminar antes da próxima
+                }
             },
             {
-                'text': f"\n\n✅ **Resposta completa:**\n{faq_match['answer']}",
-                'metadata': {"type_speed": 15}  # Velocidade normal para a resposta
+                'text': f"✅ **Resposta completa:**\n{faq_match['answer']}",
+                'metadata': {
+                    'response_part': 'answer',
+                    'complete_before_next': True
+                }
             },
             {
-                'text': "\n\nEsta informação resolveu sua dúvida?",
-                'metadata': {"type_speed": 30, "delay": 1000}  # Mais rápido, com atraso maior
+                'text': "Esta informação resolveu sua dúvida?",
+                'metadata': {
+                    'response_part': 'confirmation'
+                }
             }
         ]
 
@@ -453,7 +461,8 @@ class ActionSmartSearch(Action):
             if self._is_faq_query(query) and rag_results:
                 faq_match = self._find_best_faq_match(query, rag_results)
                 if faq_match:
-                    for part in self._format_faq_response(faq_match):
+                    response_parts = self._format_faq_response(faq_match)
+                    for part in response_parts:
                         dispatcher.utter_message(
                             text=part['text'],
                             metadata=part.get('metadata', {})
