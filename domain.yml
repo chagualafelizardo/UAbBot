@@ -6,6 +6,8 @@ intents:
   - goodbye
   - doubt
   - general_query
+  - feedback_positive
+  - feedback_negative
 
 actions:
   - utter_greet
@@ -34,6 +36,12 @@ responses:
     - text: "Claro, vou explicar de outra forma. O que exatamente não ficou claro?"
     - text: "Sem problemas, posso tentar explicar novamente. Qual parte você gostaria que eu detalhasse?"
     - text: "Vou reformular a explicação. O que você gostaria de entender melhor?"
+
+  utter_feedback_positive:
+    - text: "Ótimo! Fico feliz em ter ajudado. Se surgir mais alguma dúvida, estou à disposição."
+      
+  utter_feedback_negative:
+    - text: "Entendi. Vou tentar ajudar melhor. Poderia reformular sua pergunta ou especificar o que ainda não ficou claro?"
 
 session_config:
   session_expiration_time: 60

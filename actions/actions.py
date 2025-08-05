@@ -339,13 +339,13 @@ class ActionSmartSearch(Action):
         }
 
     def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
-        """Formata resposta para FAQ em partes completamente separadas"""
+        """Formata resposta para FAQ com botões de feedback"""
         return [
             {
                 'text': f"❓ **Pergunta encontrada em {faq_match['filename']}:**\n{faq_match['question']}",
                 'metadata': {
                     'response_part': 'question',
-                    'complete_before_next': True  # Indica que deve terminar antes da próxima
+                    'complete_before_next': True
                 }
             },
             {
@@ -358,7 +358,17 @@ class ActionSmartSearch(Action):
             {
                 'text': "Esta informação resolveu sua dúvida?",
                 'metadata': {
-                    'response_part': 'confirmation'
+                    'response_part': 'confirmation',
+                    'buttons': [
+                        {
+                            'title': '👍 Sim',
+                            'payload': '/feedback_positive'
+                        },
+                        {
+                            'title': '👎 Não',
+                            'payload': '/feedback_negative'
+                        }
+                    ]
                 }
             }
         ]

@@ -526,59 +526,49 @@
 
     /* animação dos pontos ao processar resposta */
     .typing-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 10px 15px;
-      background-color: #f0f0f0;
-      border-radius: 18px;
-      max-width: fit-content;
-    }
-
-    .typing-text {
-      font-style: italic;
-      color: #555;
-      font-size: 14px;
-      font-weight: 500;
+        background-color: #f0f0f0;
+        border-radius: 18px;
+        padding: 8px 12px;
+        display: inline-block;
+        max-width: fit-content;
     }
 
     .typing-dots {
-      display: flex;
-      align-items: flex-end;
-      height: 20px;
-      gap: 3px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 24px;
     }
 
     .typing-dot {
-      width: 6px;
-      height: 6px;
-      background-color: #666;
-      border-radius: 50%;
-      opacity: 0.4;
-      margin-bottom: 2px;
+        width: 6px;
+        height: 6px;
+        background-color: #666;
+        border-radius: 50%;
+        opacity: 0.4;
     }
 
     .typing-dot:nth-child(1) {
-      animation: bounce 1.2s infinite ease-in-out;
+        animation: bounce 1.2s infinite ease-in-out;
     }
 
     .typing-dot:nth-child(2) {
-      animation: bounce 1.2s infinite 0.15s ease-in-out;
+        animation: bounce 1.2s infinite 0.15s ease-in-out;
     }
 
     .typing-dot:nth-child(3) {
-      animation: bounce 1.2s infinite 0.3s ease-in-out;
+        animation: bounce 1.2s infinite 0.3s ease-in-out;
     }
 
     @keyframes bounce {
-      0%, 100% { 
-        transform: translateY(0);
-        opacity: 0.4;
-      }
-      50% { 
-        transform: translateY(-3px);
-        opacity: 0.8;
-      }
+        0%, 100% { 
+            transform: translateY(0);
+            opacity: 0.4;
+        }
+        50% { 
+            transform: translateY(-3px);
+            opacity: 0.8;
+        }
     }
 
     /* Estilo para as partes da resposta */
@@ -620,6 +610,54 @@
         color: #7f8c8d;
         font-style: italic;
         margin-top: 12px;
+    }
+
+    /* Botoes de feedback do usuario */
+    .feedback-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .feedback-btn {
+        padding: 8px 16px;
+        border-radius: 18px;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s;
+        flex: 1;
+    }
+
+    .feedback-yes {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    .feedback-no {
+        background-color: #f44336;
+        color: white;
+    }
+
+    .feedback-btn:hover {
+        transform: scale(1.02);
+        opacity: 0.9;
+    }
+
+    .feedback-btn:active {
+        transform: scale(0.98);
+    }
+
+    .feedback-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     /* Responsividade */
@@ -1306,33 +1344,124 @@
     // }
 
     // Novo sinal de processamento, com pontos e texto combinado
+    // function showTyping() {
+    //   if (isTyping) return;
+    //   isTyping = true;
+      
+    //   typingIndicator = document.createElement("div");
+    //   typingIndicator.className = "msg bot typing-indicator";
+      
+    //   // Adiciona o texto
+    //   const typingText = document.createElement("span");
+    //   typingText.className = "typing-text";
+    //   typingText.textContent = "UAbBot";
+    //   typingIndicator.appendChild(typingText);
+      
+    //   // Container para os pontos
+    //   const dotsContainer = document.createElement("div");
+    //   dotsContainer.className = "typing-dots";
+      
+    //   // Cria os três pontos de digitação
+    //   for (let i = 0; i < 3; i++) {
+    //     const dot = document.createElement("div");
+    //     dot.className = "typing-dot";
+    //     dotsContainer.appendChild(dot);
+    //   }
+      
+    //   typingIndicator.appendChild(dotsContainer);
+    //   chat.appendChild(typingIndicator);
+    //   chat.scrollTop = chat.scrollHeight;
+    // }
+
+    // Novo sinal de processamento, com pontos e imagem combinada, primeiro codigo
     function showTyping() {
-      if (isTyping) return;
-      isTyping = true;
-      
-      typingIndicator = document.createElement("div");
-      typingIndicator.className = "msg bot typing-indicator";
-      
-      // Adiciona o texto
-      const typingText = document.createElement("span");
-      typingText.className = "typing-text";
-      typingText.textContent = "UAbBot";
-      typingIndicator.appendChild(typingText);
-      
-      // Container para os pontos
-      const dotsContainer = document.createElement("div");
-      dotsContainer.className = "typing-dots";
-      
-      // Cria os três pontos de digitação
-      for (let i = 0; i < 3; i++) {
-        const dot = document.createElement("div");
-        dot.className = "typing-dot";
-        dotsContainer.appendChild(dot);
-      }
-      
-      typingIndicator.appendChild(dotsContainer);
-      chat.appendChild(typingIndicator);
-      chat.scrollTop = chat.scrollHeight;
+        if (isTyping) return;
+        isTyping = true;
+        
+        typingIndicator = document.createElement("div");
+        typingIndicator.className = "msg bot typing-indicator";
+        
+        // Cria o container para a imagem e pontos
+        const typingContent = document.createElement("div");
+        typingContent.style.display = "flex";
+        typingContent.style.alignItems = "center";
+        typingContent.style.gap = "8px";
+        
+        // Adiciona o logotipo da UAb
+        const logo = document.createElement("img");
+        logo.src = "{{ url_for('static', filename='images/uab_logo.png') }}";
+        logo.style.width = "24px";
+        logo.style.height = "24px";
+        logo.style.objectFit = "contain";
+        typingContent.appendChild(logo);
+        
+        // Container para os pontos
+        const dotsContainer = document.createElement("div");
+        dotsContainer.className = "typing-dots";
+        
+        // Cria os três pontos de digitação
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement("div");
+            dot.className = "typing-dot";
+            dotsContainer.appendChild(dot);
+        }
+        
+        typingContent.appendChild(dotsContainer);
+        typingIndicator.appendChild(typingContent);
+        chat.appendChild(typingIndicator);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Novo sinal de processamento, com pontos e imagem combinada segundo codigo
+    function showTyping() {
+        if (isTyping) return;
+        isTyping = true;
+        
+        typingIndicator = document.createElement("div");
+        typingIndicator.className = "msg bot typing-indicator";
+        
+        // Container flexível para imagem e pontos
+        const typingContent = document.createElement("div");
+        typingContent.style.display = "flex";
+        typingContent.style.alignItems = "center";
+        typingContent.style.gap = "8px";
+        
+        // Cria e configura a imagem
+        const logo = document.createElement("img");
+        const timestamp = new Date().getTime(); // Evita cache
+        logo.src = `/static/images/uab_logo.png?${timestamp}`;
+        logo.alt = "UAbBot está digitando";
+        logo.style.width = "24px";
+        logo.style.height = "24px";
+        logo.style.objectFit = "contain";
+        
+        // Fallback robusto para caso a imagem não carregue
+        logo.onerror = function() {
+            console.error("Erro ao carregar o logo:", this.src);
+            this.style.display = "none";
+            const fallback = document.createElement("div");
+            fallback.textContent = "UAbBot";
+            fallback.style.fontWeight = "bold";
+            fallback.style.color = "#003366"; // Cor institucional
+            typingContent.prepend(fallback);
+        };
+        
+        typingContent.appendChild(logo);
+        
+        // Cria os pontos de digitação
+        const dotsContainer = document.createElement("div");
+        dotsContainer.className = "typing-dots";
+        
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement("div");
+            dot.className = "typing-dot";
+            dotsContainer.appendChild(dot);
+        }
+        
+        typingContent.appendChild(dotsContainer);
+        typingIndicator.appendChild(typingContent);
+        chat.appendChild(typingIndicator);
+        chat.scrollTop = chat.scrollHeight;
     }
 
     function hideTyping() {

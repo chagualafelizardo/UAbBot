@@ -26,3 +26,13 @@ rules:
       - intent: general_query
       - action: action_search_documents
       - active_loop: null
+
+  - rule: Feedback positivo
+    steps:
+      - intent: feedback_positive
+      - action: utter_feedback_positive
+
+  - rule: Feedback negativo
+    steps:
+      - intent: feedback_negative
+      - action: utter_feedback_negative
