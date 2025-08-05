@@ -524,6 +524,62 @@
       color: white;
     }
 
+    /* animação dos pontos ao processar resposta */
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 15px;
+      background-color: #f0f0f0;
+      border-radius: 18px;
+      max-width: fit-content;
+    }
+
+    .typing-text {
+      font-style: italic;
+      color: #555;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .typing-dots {
+      display: flex;
+      align-items: flex-end;
+      height: 20px;
+      gap: 3px;
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #666;
+      border-radius: 50%;
+      opacity: 0.4;
+      margin-bottom: 2px;
+    }
+
+    .typing-dot:nth-child(1) {
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .typing-dot:nth-child(2) {
+      animation: bounce 1.2s infinite 0.15s ease-in-out;
+    }
+
+    .typing-dot:nth-child(3) {
+      animation: bounce 1.2s infinite 0.3s ease-in-out;
+    }
+
+    @keyframes bounce {
+      0%, 100% { 
+        transform: translateY(0);
+        opacity: 0.4;
+      }
+      50% { 
+        transform: translateY(-3px);
+        opacity: 0.8;
+      }
+    }
     /* Responsividade */
     @media (max-width: 768px) {
       .history-panel {
@@ -535,10 +591,6 @@
       }
     }
 
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
   </style>
 </head>
 <body>
@@ -1122,13 +1174,65 @@
       }
     }
 
+    // Antigo sinal de processamento
+    /*
+      function showTyping() {
+        if (isTyping) return;
+        isTyping = true;
+        
+        typingIndicator = document.createElement("div");
+        typingIndicator.className = "msg bot typing-indicator";
+        typingIndicator.innerHTML = 'UAbBot está digitando<span class="typing-cursor"></span>';
+        chat.appendChild(typingIndicator);
+        chat.scrollTop = chat.scrollHeight;
+      }
+    */
+
+    // Novo sinal de processamento, simple apenas com pontos
+    // function showTyping() {
+    //   if (isTyping) return;
+    //   isTyping = true;
+      
+    //   typingIndicator = document.createElement("div");
+    //   typingIndicator.className = "msg bot typing-indicator";
+      
+    //   // Cria os três pontos de digitação
+    //   for (let i = 0; i < 3; i++) {
+    //     const dot = document.createElement("div");
+    //     dot.className = "typing-dot";
+    //     typingIndicator.appendChild(dot);
+    //   }
+      
+    //   chat.appendChild(typingIndicator);
+    //   chat.scrollTop = chat.scrollHeight;
+    // }
+
+    // Novo sinal de processamento, com pontos e texto combinado
     function showTyping() {
       if (isTyping) return;
       isTyping = true;
       
       typingIndicator = document.createElement("div");
       typingIndicator.className = "msg bot typing-indicator";
-      typingIndicator.innerHTML = 'UAbBot está digitando<span class="typing-cursor"></span>';
+      
+      // Adiciona o texto
+      const typingText = document.createElement("span");
+      typingText.className = "typing-text";
+      typingText.textContent = "UAbBot";
+      typingIndicator.appendChild(typingText);
+      
+      // Container para os pontos
+      const dotsContainer = document.createElement("div");
+      dotsContainer.className = "typing-dots";
+      
+      // Cria os três pontos de digitação
+      for (let i = 0; i < 3; i++) {
+        const dot = document.createElement("div");
+        dot.className = "typing-dot";
+        dotsContainer.appendChild(dot);
+      }
+      
+      typingIndicator.appendChild(dotsContainer);
       chat.appendChild(typingIndicator);
       chat.scrollTop = chat.scrollHeight;
     }

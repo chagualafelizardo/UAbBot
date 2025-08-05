@@ -338,18 +338,25 @@ class ActionSmartSearch(Action):
             'score': best_score
         }
 
-    def _format_faq_response(self, faq_match: Dict) -> str:
-        """Formata resposta para FAQ encontrada, retornando sempre a resposta completa"""
-        return (
-            f"❓ **Pergunta encontrada em {faq_match['filename']}:**\n"
-            f"{faq_match['question']}\n\n"
-            f"✅ **Resposta completa:**\n"
-            f"{faq_match['answer']}\n\n"
-            f"Esta informação resolveu sua dúvida?"
-        )
+    def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
+        """Formata resposta para FAQ encontrada em partes sequenciais"""
+        return [
+            {
+                'text': f"❓ **Pergunta encontrada em {faq_match['filename']}:**\n{faq_match['question']}",
+                'metadata': {"type_speed": 20, "delay": 500}  # Mostra rápido, com pequeno atraso
+            },
+            {
+                'text': f"\n\n✅ **Resposta completa:**\n{faq_match['answer']}",
+                'metadata': {"type_speed": 15}  # Velocidade normal para a resposta
+            },
+            {
+                'text': "\n\nEsta informação resolveu sua dúvida?",
+                'metadata': {"type_speed": 30, "delay": 1000}  # Mais rápido, com atraso maior
+            }
+        ]
 
-    def _format_general_response(self, result: Dict, query: str) -> str:
-        """Formata resposta para conteúdo geral com seção relevante completa"""
+    def _format_general_response(self, result: Dict, query: str) -> List[Dict]:
+        """Formata resposta para conteúdo geral em partes sequenciais"""
         relevant = self._find_relevant_section(result['content'], query)
         
         confidence = ""
@@ -357,12 +364,22 @@ class ActionSmartSearch(Action):
             confidence = " (alta confiança)"
         elif result['similarity'] > 0.5:
             confidence = " (média confiança)"
-            
-        return (
-            f"📄 **Informação encontrada em '{result['filename']}'{confidence}:**\n\n"
-            f"{relevant['text']}\n\n"
-            f"Posso te ajudar com algo mais específico sobre este conteúdo?"
-        )
+        
+        return [
+            {
+                'text': f"📄 **Informação encontrada em '{result['filename']}'{confidence}:**",
+                'metadata': {"type_speed": 20}
+            },
+            {
+                'text': f"\n\n{relevant['text']}",
+                'metadata': {"type_speed": 15}
+            },
+            {
+                'text': "\n\nPosso te ajudar com algo mais específico sobre este conteúdo?",
+                'metadata': {"type_speed": 30, "delay": 1500}
+            }
+        ]
+
 
     def _find_relevant_section(self, content: str, query: str) -> Dict:
         """Encontra a seção mais relevante mantendo a estrutura completa"""
@@ -436,18 +453,20 @@ class ActionSmartSearch(Action):
             if self._is_faq_query(query) and rag_results:
                 faq_match = self._find_best_faq_match(query, rag_results)
                 if faq_match:
-                    dispatcher.utter_message(
-                        text=self._format_faq_response(faq_match),
-                        metadata={"type_speed": 30}  # Mais rápido para FAQs
-                    )
+                    for part in self._format_faq_response(faq_match):
+                        dispatcher.utter_message(
+                            text=part['text'],
+                            metadata=part.get('metadata', {})
+                        )
                     return []
             
-            # Se encontrou resultados RAG, mostra o mais relevante
+            # Se encontrou resultados RAG, mostra em partes
             if rag_results:
-                dispatcher.utter_message(
-                    text=self._format_general_response(rag_results[0], query),
-                    metadata={"type_speed": 30}  # Velocidade padrão
-                )
+                for part in self._format_general_response(rag_results[0], query):
+                    dispatcher.utter_message(
+                        text=part['text'],
+                        metadata=part.get('metadata', {})
+                    )
                 return []
             
             # Fallback para busca textual
@@ -457,25 +476,26 @@ class ActionSmartSearch(Action):
             ).sort([("score", {"$meta": "textScore"})]).limit(1))
             
             if docs:
-                dispatcher.utter_message(
-                    text=self._format_general_response({
-                        'filename': docs[0]['filename'],
-                        'content': docs[0]['text_content'],
-                        'similarity': 0.5
-                    }, query),
-                    metadata={"type_speed": 30}  # Adicionado metadata
-                )
+                for part in self._format_general_response({
+                    'filename': docs[0]['filename'],
+                    'content': docs[0]['text_content'],
+                    'similarity': 0.5
+                }, query):
+                    dispatcher.utter_message(
+                        text=part['text'],
+                        metadata=part.get('metadata', {})
+                    )
             else:
                 dispatcher.utter_message(
                     text="Não encontrei informações sobre esse tópico. Poderia reformular sua pergunta?",
-                    metadata={"type_speed": 30}  # Adicionado metadata
+                    metadata={"type_speed": 30}
                 )
                 
         except Exception as e:
             self.logger.error(f"Erro na busca: {str(e)}", exc_info=True)
             dispatcher.utter_message(
                 text="Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.",
-                metadata={"type_speed": 30}  # Adicionado metadata
+                metadata={"type_speed": 30}
             )
 
         return []
