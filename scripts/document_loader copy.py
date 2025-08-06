@@ -13,6 +13,7 @@ import logging
 from typing import Optional, Dict, List, Tuple
 import hashlib
 
+
 # Configuração de logging
 logging.basicConfig(
     level=logging.INFO,
@@ -102,7 +103,6 @@ class MongoDBManager:
 
 class DocumentProcessor:
     """Processador de documentos com suporte para múltiplos formatos"""
-    
     @staticmethod
     def calculate_file_hash(filepath: str) -> str:
         """Calcula hash SHA-256 do arquivo para verificação de integridade"""
@@ -252,6 +252,33 @@ class DocumentProcessor:
             logger.error(f"❌ Erro ao processar DOCX {filename}: {str(e)}")
             return None
 
+    @classmethod
+    def get_new_files(cls, db) -> List[str]:
+        """Retorna lista de arquivos novos comparando por hash"""
+        try:
+            # Pega todos os hashes existentes no MongoDB
+            existing_hashes = {doc["file_hash"] for doc in db.documents.find({}, {"file_hash": 1})}
+            
+            new_files = []
+            
+            for filename in os.listdir(Config.DOCUMENTS_DIR):
+                filepath = os.path.join(Config.DOCUMENTS_DIR, filename)
+                
+                if os.path.isfile(filepath):
+                    try:
+                        file_hash = cls.calculate_file_hash(filepath)
+                        if file_hash not in existing_hashes:
+                            new_files.append(filename)
+                    except Exception as e:
+                        logger.error(f"Erro ao calcular hash de {filename}: {str(e)}")
+                        continue
+            
+            return new_files
+        
+        except Exception as e:
+            logger.error(f"Erro ao verificar arquivos novos: {str(e)}")
+            return []
+        
 class EmbeddingManager:
     """Gerenciador de modelos de embedding e operações relacionadas"""
     
@@ -264,7 +291,8 @@ class EmbeddingManager:
             model = SentenceTransformer(
                 Config.MODEL_NAME,
                 cache_folder=Config.MODEL_CACHE_DIR,
-                device='cpu'
+                device='cpu',
+                timeout=120  # 2 minutos para download
             )
             
             # Teste de funcionamento
@@ -342,7 +370,6 @@ class EmbeddingManager:
 
 class DocumentLoader:
     """Classe principal para carregamento de documentos"""
-    
     @classmethod
     def load_documents(cls) -> bool:
         """Processa todos os documentos no diretório configurado"""
@@ -401,22 +428,130 @@ class DocumentLoader:
             logger.error(f"❌ Falha crítica no carregamento de documentos: {str(e)}", exc_info=True)
             return False
 
+
+    @classmethod
+    def continuous_loading(cls):
+        """Verifica e carrega novos arquivos periodicamente"""
+        logger.info("🔄 Iniciando carregamento contínuo de documentos...")
+        
+        # Primeiro faz um carregamento COMPLETO de todos os arquivos
+        if not cls.load_documents():
+            logger.error("❌ Falha no carregamento inicial")
+            return
+        
+        while True:
+            try:
+                with MongoDBManager() as mongo:
+                    # Verifica por arquivos novos (tanto por hash quanto por nome)
+                    all_files = set(os.listdir(Config.DOCUMENTS_DIR))
+                    db_files = {doc["filename"] for doc in mongo.db.documents.find({}, {"filename": 1})}
+                    new_files = list(all_files - db_files)
+                    
+                    # Verifica também por arquivos modificados (por hash)
+                    existing_hashes = {doc["file_hash"] for doc in mongo.db.documents.find({}, {"file_hash": 1})}
+                    modified_files = []
+                    for filename in all_files:
+                        filepath = os.path.join(Config.DOCUMENTS_DIR, filename)
+                        if os.path.isfile(filepath):
+                            file_hash = DocumentProcessor.calculate_file_hash(filepath)
+                            if file_hash not in existing_hashes:
+                                modified_files.append(filename)
+                    
+                    # Combina as listas
+                    files_to_process = list(set(new_files + modified_files))
+                    
+                    if files_to_process:
+                        logger.info(f"📁 Arquivos para processar: {len(files_to_process)}")
+                        model = EmbeddingManager.load_model()
+                        documents = []
+                        embeddings = []
+                        
+                        for filename in files_to_process:
+                            filepath = os.path.join(Config.DOCUMENTS_DIR, filename)
+                            
+                            try:
+                                doc_data = None
+                                if filename.lower().endswith('.pdf'):
+                                    doc_data = DocumentProcessor.process_pdf(mongo.fs, mongo.db, filepath, filename)
+                                elif filename.lower().endswith(('.doc', '.docx')):
+                                    doc_data = DocumentProcessor.process_docx(mongo.fs, mongo.db, filepath, filename)
+                                
+                                if doc_data and doc_data.get('text_content'):
+                                    embedding = model.encode(doc_data['text_content'])
+                                    documents.append({
+                                        'filename': filename,
+                                        'text': doc_data['text_content'],
+                                        'metadata': doc_data
+                                    })
+                                    embeddings.append(embedding)
+                                    logger.info(f"✅ {filename} processado com sucesso")
+                            
+                            except Exception as e:
+                                logger.error(f"❌ Erro ao processar {filename}: {str(e)}")
+                                continue
+                        
+                        if documents:
+                            EmbeddingManager.save_embeddings(documents, embeddings)
+                            logger.info(f"💾 Embeddings atualizados para {len(documents)} documentos")
+                    
+                    else:
+                        logger.info("⏳ Nenhum arquivo novo ou modificado encontrado")
+                    
+                    # Aguarda até a próxima verificação
+                    logger.info(f"⏳ Próxima verificação em {Config.SCAN_INTERVAL//60} minutos...")
+                    time.sleep(Config.SCAN_INTERVAL)
+            
+            except Exception as e:
+                logger.error(f"⚠️ Erro no carregamento contínuo: {str(e)}")
+                logger.info("🔄 Tentando novamente em 1 minuto...")
+                time.sleep(60)
+
+    @classmethod
+    def check_environment(cls):
+        """Verifica se o ambiente está configurado corretamente"""
+        checks_passed = True
+        
+        # Verifica diretório de documentos
+        if not os.path.exists(Config.DOCUMENTS_DIR):
+            logger.error(f"Diretório de documentos não encontrado: {Config.DOCUMENTS_DIR}")
+            checks_passed = False
+        
+        # Verifica permissões
+        try:
+            test_file = os.path.join(Config.DOCUMENTS_DIR, "test_permission")
+            with open(test_file, 'w') as f:
+                f.write("test")
+            os.remove(test_file)
+        except Exception as e:
+            logger.error(f"Problema de permissão no diretório: {str(e)}")
+            checks_passed = False
+        
+        return checks_passed
+
 def main():
     """Função principal"""
     try:
         Config.initialize()
-        logger.info("⏳ Iniciando carregamento de documentos...")
+        logger.info("🚀 Iniciando serviço de documentos")
         
-        if DocumentLoader.load_documents():
-            logger.info("✅ Carregamento de documentos concluído com sucesso!")
-            sys.exit(0)
-        else:
-            logger.error("❌ Nenhum documento foi processado")
+        # Verifica se o diretório de documentos existe
+        if not os.path.exists(Config.DOCUMENTS_DIR):
+            logger.error(f"Diretório não encontrado: {Config.DOCUMENTS_DIR}")
             sys.exit(1)
-            
+        
+        # Modo de execução
+        if len(sys.argv) > 1 and sys.argv[1] == "--continuous":
+            logger.info("🔁 Modo contínuo ativado")
+            DocumentLoader.continuous_loading()
+        else:
+            logger.info("⚡ Executando carregamento único")
+            if DocumentLoader.load_documents():
+                logger.info("✅ Carregamento concluído com sucesso!")
+                sys.exit(0)
+            else:
+                logger.error("❌ Falha no carregamento inicial")
+                sys.exit(1)
+                
     except Exception as e:
-        logger.error(f"❌ Falha crítica: {str(e)}", exc_info=True)
+        logger.error(f"💥 Falha crítica: {str(e)}", exc_info=True)
         sys.exit(1)
-
-if __name__ == "__main__":
-    main()

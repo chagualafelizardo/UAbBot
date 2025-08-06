@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>UAbBot Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #333;
+      color: #fff;
+      padding: 10px;
+      position: relative;
+    }
+
+    /* Ícone do Chat */
+    #openBot {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      cursor: pointer;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      border: 2px solid #007bff;
+      z-index: 1000;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      object-fit: cover;
+    }
+
+    #openBot:hover {
+      transform: scale(1.1) rotate(10deg);
+      box-shadow: 0 0 15px rgba(0, 123, 255, 0.7);
+    }
+
+    /* Chat Container */
+    #chatContainer {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      width: 300px;
+      background-color: #f4f4f4;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 999;
+      height: 500px;
+    }
+
+    #chatContainer.active {
+      display: flex;
+    }
+
+    #chatContainer.maximized {
+      width: 90vw;
+      height: 80vh;
+      bottom: 10vh;
+      right: 5vw;
+    }
+
+    #chatHeader {
+      background-color: #007bff;
+      color: white;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #chatHeader button {
+      background: none;
+      border: none;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+
+    #languageToggle {
+      background-color: white;
+      color: #007bff;
+      border: none;
+      padding: 5px 10px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #chat {
+      height: 300px;
+      overflow-y: auto;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #chat::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #chat::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    #chat::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+
+    #chat::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    .msg {
+      margin: 10px;
+      padding: 12px 16px;
+      border-radius: 18px;
+      max-width: 80%;
+      word-wrap: break-word;
+      line-height: 1.4;
+      position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .user {
+      background-color: #007bff;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bot {
+      background-color: #f0f0f0;
+      color: #333;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .user::after, .bot::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      width: 12px;
+      height: 12px;
+    }
+
+    .user::after {
+      right: -6px;
+      background-color: #007bff;
+      clip-path: polygon(0 0, 100% 0, 100% 100%);
+    }
+
+    .bot::after {
+      left: -6px;
+      background-color: #f0f0f0;
+      clip-path: polygon(0 0, 0 100%, 100% 0);
+    }
+
+    #chatInput {
+      display: flex;
+      border-top: 1px solid #ccc;
+      background-color: white;
+      padding: 10px;
+      gap: 8px;
+    }
+
+    #userInput {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      flex: 1;
+      border-radius: 20px;
+      outline: none;
+    }
+
+    #bottomBar {
+      display: flex;
+      justify-content: flex-end;
+      background-color: #f5f7fa;
+      padding: 8px 10px;
+      border-top: 1px solid #ddd;
+      gap: 8px;
+    }
+
+    #emojiBtn, #clearBtn, #sendBtn {
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    #emojiBtn:hover, #clearBtn:hover {
+      transform: scale(1.1);
+    }
+
+    #emojiBtn {
+      background: rgba(0, 123, 255, 0.1);
+    }
+
+    #emojiBtn:hover {
+      background: rgba(0, 123, 255, 0.2);
+    }
+
+    #clearBtn {
+      background: rgba(220, 53, 69, 0.1);
+    }
+
+    #clearBtn:hover {
+      background: rgba(220, 53, 69, 0.2);
+    }
+
+    #sendBtn {
+      background: #007bff;
+    }
+
+    #sendBtn:hover {
+      background: #0069d9;
+    }
+
+    #bottomBar svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    #sendBtn {
+      background: #007bff;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+    }
+
+    #sendBtn:hover {
+      background: #0069d9;
+      transform: scale(1.05);
+    }
+
+    #sendBtn svg {
+      width: 16px;
+      height: 16px;
+      fill: white;
+    }
+
+    #emojiPicker {
+      display: none;
+      flex-wrap: wrap;
+      padding: 10px;
+      background: white;
+      border-top: 1px solid #ddd;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    #emojiPicker span {
+      font-size: 24px;
+      padding: 5px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    #emojiPicker span:hover {
+      transform: scale(1.2);
+    }
+
+    .typing-indicator {
+      font-style: italic;
+      color: #666;
+      display: flex;
+      align-items: center;
+    }
+
+    .typing-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background-color: #007bff;
+      margin-left: 4px;
+      animation: blink 1s infinite;
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background-color: red;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .course-bubble {
+      margin: 8px 0;
+      padding: 10px;
+      background-color: #e9f5ff;
+      border-radius: 12px;
+      border: 1px solid #d0e3ff;
+    }
+
+    .course-title {
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .option-btn {
+      background-color: transparent;
+      color: #333;
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .option-btn:hover {
+      background-color: rgba(200, 230, 255, 0.3);
+      border-color: #bbb;
+    }
+
+    .menu-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .menu-btn {
+      background-color: transparent;
+      color: #333;
+      border: 1px solid #ddd;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+      margin: 4px 0;
+      width: 100%;
+    }
+
+    .menu-btn:hover {
+      background-color: rgba(200, 230, 255, 0.3);
+      border-color: #bbb;
+    }
+
+    /* Painel de Histórico */
+    .history-panel {
+      position: fixed;
+      left: -300px;
+      top: 0;
+      width: 300px;
+      height: 100vh;
+      background-color: #f7f7f8;
+      border-right: 1px solid #e5e5e6;
+      transition: transform 0.3s ease;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .history-panel.active {
+      transform: translateX(300px);
+    }
+
+    .history-header {
+      padding: 15px;
+      border-bottom: 1px solid #e5e5e6;
+    }
+
+    .new-chat-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #e5e5e6;
+      border-radius: 6px;
+      background-color: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      color: #353740;
+    }
+
+    .new-chat-btn:hover {
+      background-color: #f0f0f0;
+    }
+
+    .history-search-container {
+      margin-top: 15px;
+    }
+
+    .history-search {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #e5e5e6;
+      font-size: 13px;
+    }
+
+    .history-search:focus {
+      outline: none;
+      border-color: #10a37f;
+    }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 0;
+    }
+
+    /* Itens do Histórico */
+    .conversation-item {
+      padding: 10px 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+
+    .conversation-item:hover {
+      background-color: #f0f0f0;
+    }
+
+    .conversation-item.active {
+      background-color: #ebebeb;
+    }
+
+    .conversation-icon {
+      flex-shrink: 0;
+    }
+
+    .conversation-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .conversation-title {
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+
+    .conversation-time {
+      font-size: 11px;
+      color: #6e6e80;
+    }
+
+    /* Botão de alternar histórico */
+    .toggle-history-btn {
+      position: fixed;
+      left: 20px;
+      top: 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      z-index: 1000;
+      padding: 8px;
+      border-radius: 50%;
+      transition: all 0.3s;
+    }
+
+    .toggle-history-btn:hover {
+      background-color: #f0f0f0;
+    }
+
+    /* Grupos de data */
+    .history-date-group {
+      margin-top: 15px;
+    }
+
+    .history-date-title {
+      font-size: 12px;
+      color: #6e6e80;
+      padding: 5px 15px;
+      font-weight: 500;
+    }
+
+    .feedback-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .feedback-btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .feedback-btn:hover {
+      opacity: 0.8;
+    }
+
+    .feedback-yes {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .feedback-no {
+      background-color: #f44336;
+      color: white;
+    }
+
+    /* animação dos pontos ao processar resposta */
+    .typing-indicator {
+        background-color: #f0f0f0;
+        border-radius: 18px;
+        padding: 8px 12px;
+        display: inline-block;
+        max-width: fit-content;
+    }
+
+    .typing-dots {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 24px;
+    }
+
+    .typing-dot {
+        width: 6px;
+        height: 6px;
+        background-color: #666;
+        border-radius: 50%;
+        opacity: 0.4;
+    }
+
+    .typing-dot:nth-child(1) {
+        animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .typing-dot:nth-child(2) {
+        animation: bounce 1.2s infinite 0.15s ease-in-out;
+    }
+
+    .typing-dot:nth-child(3) {
+        animation: bounce 1.2s infinite 0.3s ease-in-out;
+    }
+
+    @keyframes bounce {
+        0%, 100% { 
+            transform: translateY(0);
+            opacity: 0.4;
+        }
+        50% { 
+            transform: translateY(-3px);
+            opacity: 0.8;
+        }
+    }
+
+    /* Estilo para as partes da resposta */
+  .response-part {
+        margin-bottom: 12px;
+        display: block;
+    }
+
+    .response-question {
+        color: #2c3e50;
+        font-weight: 500;
+    }
+
+    .response-answer {
+        color: #34495e;
+        white-space: pre-wrap;
+    }
+
+    .response-confirmation {
+        color: #7f8c8d;
+        font-style: italic;
+    }
+
+    /* Estilos para as partes da resposta FAQ */
+    .faq-question {
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .faq-answer {
+        color: #34495e;
+        line-height: 1.5;
+        margin: 12px 0;
+        white-space: pre-wrap;
+    }
+
+    .faq-confirmation {
+        color: #7f8c8d;
+        font-style: italic;
+        margin-top: 12px;
+    }
+
+    /* Botoes de feedback do usuario */
+    .feedback-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .feedback-btn {
+        padding: 8px 16px;
+        border-radius: 18px;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s;
+        flex: 1;
+    }
+
+    .feedback-yes {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    .feedback-no {
+        background-color: #f44336;
+        color: white;
+    }
+
+    .feedback-btn:hover {
+        transform: scale(1.02);
+        opacity: 0.9;
+    }
+
+    .feedback-btn:active {
+        transform: scale(0.98);
+    }
+
+    .feedback-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+      .history-panel {
+        width: 260px;
+      }
+      
+      .history-panel.active {
+        transform: translateX(260px);
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Adicione isso no seu HTML, preferencialmente próximo ao chat container -->
+  <div id="historyPanel" class="history-panel">
+    <div class="history-header">
+      <button id="newChatButton" class="new-chat-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 4V20M4 12H20" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        Nova conversa
+      </button>
+      <div class="history-search-container">
+        <input type="text" id="historySearch" placeholder="Pesquisar conversas..." class="history-search">
+      </div>
+    </div>
+    <div id="historyList" class="history-list">
+      <!-- Conversas serão carregadas aqui -->
+    </div>
+  </div>
+
+
+  <header>
+    <h2>Web Page</h2>
+  </header>
+
+  <main style="padding: 20px;">
+    <p>Conteúdo principal da página...</p>
+  </main>
+
+  <!-- Ícone do Chat -->
+  <img id="openBot" src="{{ url_for('static', filename='images/uab_logo.png') }}" alt="Chat UAbBot" onclick="toggleChat()">
+
+  <!-- Chat Container -->
+  <div id="chatContainer">
+    <div id="chatHeader">
+      <span>UAbBot</span>
+      <div>
+        <button id="toggleHistory" class="toggle-history-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </button>
+        <button id="languageToggle" onclick="toggleLanguage()">PT</button>
+        <button id="maximizeBtn" onclick="toggleMaximize()">⛶</button>
+        <button onclick="toggleChat()">×</button>
+      </div>
+    </div>
+    <div id="chat"></div>
+    <div id="chatInput">
+      <input type="text" id="userInput" placeholder="Digite sua mensagem..." />
+    </div>
+    <div id="bottomBar">
+      <button id="emojiBtn" onclick="toggleEmojiPicker()">😊</button>
+      <button id="clearBtn" onclick="clearChat()" title="Limpar chat">🧹</button>
+      <button id="sendBtn" onclick="sendMessage()" title="Enviar mensagem">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </div>
+    <div id="emojiPicker"></div>
+  </div>
+
+  <script>
+    // Elementos DOM
+    const chatContainer = document.getElementById("chatContainer");
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("userInput");
+    const maximizeBtn = document.getElementById("maximizeBtn");
+    const languageBtn = document.getElementById("languageToggle");
+    const emojiPicker = document.getElementById("emojiPicker");
+    const openBot = document.getElementById("openBot");
+    
+    // Estado
+    let currentLanguage = 'pt';
+    let typingIndicator = null;
+    let isTyping = false;
+    let hasNewMessage = false;
+    let hasShownWelcome = false;
+
+    // Variável global para controlar o estado de digitação
+    let messageQueue = [];
+    let isProcessingQueue = false;
+
+
+    // Emojis disponíveis
+    const emojis = [
+      "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", 
+      "🙂", "🙃", "😉", "😍", "🥰", "😘", "😗", "😙", "😚", "😋",
+      "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳",
+      "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖",
+      "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯",
+      "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔",
+      "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯", "😦",
+      "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😵", "🤐", "🥴",
+      "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👿",
+      "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾", "🤖",
+      "🎃", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾"
+    ];
+
+    // Funções
+    function toggleLanguage() {
+      currentLanguage = currentLanguage === 'en' ? 'pt' : 'en';
+      languageBtn.textContent = currentLanguage.toUpperCase();
+      input.placeholder = currentLanguage === 'en' ? "Type your message..." : "Digite sua mensagem...";
+      appendMessage("bot", `Idioma alterado para ${currentLanguage === 'en' ? 'Inglês' : 'Português'}`);
+    }
+
+    function toggleChat() {
+      chatContainer.classList.toggle("active");
+      emojiPicker.style.display = "none";
+      
+      if (chatContainer.classList.contains("active")) {
+        hasNewMessage = false;
+        updateNotificationBadge();
+        
+        // Mostra mensagem de boas-vindas apenas na primeira vez
+        if (!hasShownWelcome) {
+          showTyping();
+          setTimeout(() => {
+            hideTyping();
+            showWelcomeMessage();
+          }, 800);
+          hasShownWelcome = true;
+        }
+      }
+    }
+
+    function showWelcomeMessage() {
+      const welcomeMsg = document.createElement("div");
+      welcomeMsg.className = "msg bot";
+      chat.appendChild(welcomeMsg);
+      
+      const welcomeText = `Olá! Eu sou o UAbBot, o seu assistente virtual. Como posso ajudar você hoje? 👋\nO que deseja saber?`;
+      const menuOptions = [
+        { title: "1. Admissão", payload: "admission_info" },
+        { title: "2. Matrículas", payload: "enrollment_info" },
+        { title: "3. Propinas", payload: "tuition_info" },
+        { title: "4. Apoio Académico", payload: "academic_support" },
+        { title: "5. Cursos", payload: "ask_uab_courses" },
+        { title: "6. Bolsas", payload: "scholarship_info" },
+        { title: "7. Investigação", payload: "research_info" }
+      ];
+      
+      // Typewriter para o texto principal
+      let i = 0;
+      const textSpeed = 30;
+      function typeWriterText() {
+        if (i < welcomeText.length) {
+          welcomeMsg.innerHTML = welcomeText.substring(0, i+1).replace(/\n/g, '<br>');
+          i++;
+          setTimeout(typeWriterText, textSpeed);
+        } else {
+          // Quando o texto termina, começa a mostrar os botões um por um
+          const menuContainer = document.createElement("div");
+          menuContainer.className = "menu-options";
+          welcomeMsg.appendChild(menuContainer);
+          
+          let j = 0;
+          const buttonSpeed = 500;
+          
+          function typeWriterButtons() {
+            if (j < menuOptions.length) {
+              const btn = document.createElement("button");
+              btn.className = "menu-btn";
+              btn.textContent = menuOptions[j].title;
+              
+              // Efeito de fade-in para o botão
+              btn.style.opacity = '0';
+              btn.style.transition = 'opacity 0.3s ease';
+              
+              // CORREÇÃO: Criamos uma cópia local do payload atual
+              const currentPayload = menuOptions[j].payload;
+              
+              // Vinculação correta do evento
+              btn.addEventListener('click', () => {
+                showTyping();
+                
+                if (currentPayload === 'ask_uab_courses') {
+                  setTimeout(() => {
+                    hideTyping();
+                    showCourseTypesMenu();
+                  }, 800);
+                } else {
+                  fetch("http://localhost:5005/webhooks/rest/webhook", {
+                    method: "POST",
+                    headers: { 
+                      "Content-Type": "application/json",
+                      "Accept": "application/json"
+                    },
+                    body: JSON.stringify({ 
+                      sender: "user_" + Date.now(),
+                      message: currentPayload,
+                      metadata: { language: currentLanguage }
+                    })
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    hideTyping();
+                    if (data && data.length > 0) {
+                      data.forEach(response => {
+                        if (response.text) appendMessage("bot", response.text);
+                      });
+                    }
+                  })
+                  .catch(error => {
+                    hideTyping();
+                    console.error("Erro:", error);
+                  });
+                }
+              });
+              
+              menuContainer.appendChild(btn);
+              
+              // Animação de aparecimento do botão
+              setTimeout(() => {
+                btn.style.opacity = '1';
+              }, 10);
+              
+              j++;
+              setTimeout(typeWriterButtons, buttonSpeed);
+            }
+          }
+          
+          typeWriterButtons();
+        }
+        chat.scrollTop = chat.scrollHeight;
+      }
+      
+      typeWriterText();
+    }
+
+    function showCourseTypesMenu() {
+      const courseTypesMsg = document.createElement("div");
+      courseTypesMsg.className = "msg bot";
+      chat.appendChild(courseTypesMsg);
+      
+      const questionText = "Que tipo de curso deseja consultar?";
+      const menuOptions = [
+        { title: "1. Licenciaturas", payload: "licenciatura" },
+        { title: "2. Mestrados", payload: "mestrado" },
+        { title: "3. Doutoramentos", payload: "doutoramento" }
+      ];
+      
+      // Primeiro mostra a pergunta com efeito de digitação
+      let i = 0;
+      const textSpeed = 30;
+      
+      function typeWriterQuestion() {
+        if (i < questionText.length) {
+          courseTypesMsg.innerHTML = questionText.substring(0, i+1);
+          i++;
+          setTimeout(typeWriterQuestion, textSpeed);
+        } else {
+          // Quando a pergunta termina, cria o container para os botões
+          const menuContainer = document.createElement("div");
+          menuContainer.className = "menu-options";
+          courseTypesMsg.appendChild(menuContainer);
+          
+          // Mostra os botões um por um com efeito
+          let j = 0;
+          const buttonSpeed = 500;
+          
+          function typeWriterButtons() {
+            if (j < menuOptions.length) {
+              const btn = document.createElement("button");
+              btn.className = "menu-btn";
+              btn.textContent = menuOptions[j].title;
+              
+              // Efeito de fade-in para o botão
+              btn.style.opacity = '0';
+              btn.style.transition = 'opacity 0.3s ease';
+              
+              // Vinculação do evento
+              const currentPayload = menuOptions[j].payload;
+              btn.addEventListener('click', () => {
+                showTyping();
+                fetch("http://localhost:5005/webhooks/rest/webhook", {
+                  method: "POST",
+                  headers: { 
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                  },
+                  body: JSON.stringify({ 
+                    sender: "user_" + Date.now(),
+                    message: currentPayload,
+                    metadata: { language: currentLanguage }
+                  })
+                })
+                .then(response => response.json())
+                .then(data => {
+                  hideTyping();
+                  if (data && data.length > 0) {
+                    data.forEach(response => {
+                      if (response.text) appendMessage("bot", response.text);
+                    });
+                  }
+                })
+                .catch(error => {
+                  hideTyping();
+                  console.error("Erro:", error);
+                });
+              });
+              
+              menuContainer.appendChild(btn);
+              
+              // Animação de aparecimento do botão
+              setTimeout(() => {
+                btn.style.opacity = '1';
+              }, 10);
+              
+              j++;
+              setTimeout(typeWriterButtons, buttonSpeed);
+            }
+          }
+          
+          typeWriterButtons();
+        }
+        chat.scrollTop = chat.scrollHeight;
+      }
+      
+      typeWriterQuestion();
+    }
+
+    function sendMenuOption(option) {
+      showTyping();
+      
+      // Se for a opção de cursos, mostra o menu de tipos de cursos
+      if (option === 'ask_uab_courses') {
+        setTimeout(() => {
+          hideTyping();
+          showCourseTypesMenu();
+        }, 800);
+        return;
+      }
+
+      // Mapeia os payloads para textos que o Rasa reconhece
+      const optionTextMap = {
+        'ask_undergraduate_courses': 'licenciatura',
+        'ask_masters_courses': 'mestrado',
+        'ask_phd_courses': 'doutoramento'
+      };
+
+      const messageToSend = optionTextMap[option] || option;
+      
+      fetch("http://localhost:5005/webhooks/rest/webhook", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ 
+          sender: "user_" + Date.now(),
+          message: messageToSend,
+          metadata: {
+            language: currentLanguage
+          }
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        hideTyping();
+        if (data && data.length > 0) {
+          data.forEach(response => {
+              if (response.text) {
+                  const metadata = response.metadata || {};
+                  appendMessage("bot", response.text, null, metadata);
+              }
+          });
+        }
+      })
+      .catch(error => {
+        hideTyping();
+        console.error("Erro:", error);
+      });
+    }
+
+    function toggleMaximize() {
+      chatContainer.classList.toggle("maximized");
+      maximizeBtn.textContent = chatContainer.classList.contains("maximized") ? "🗗" : "⛶";
+    }
+
+    function toggleEmojiPicker() {
+      if (emojiPicker.children.length === 0) {
+        emojis.forEach(emoji => {
+          const span = document.createElement("span");
+          span.textContent = emoji;
+          span.style.fontSize = "24px";
+          span.style.cursor = "pointer";
+          span.style.padding = "5px";
+          span.onclick = () => {
+            input.value += emoji;
+            input.focus();
+            emojiPicker.style.display = "none";
+          };
+          emojiPicker.appendChild(span);
+        });
+      }
+      
+      emojiPicker.style.display = emojiPicker.style.display === "none" ? "flex" : "none";
+    }
+
+    function clearChat() {
+      chat.innerHTML = "";
+      hasShownWelcome = false;
+      
+      // Mostra a mensagem de chat apagado
+      const clearMsg = document.createElement("div");
+      clearMsg.className = "msg bot";
+      clearMsg.innerHTML = "<p>Histórico de chat apagado. Como posso ajudar você?</p>";
+      chat.appendChild(clearMsg);
+      
+      // Mostra novamente as opções iniciais
+      showWelcomeMessage();
+      
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function processMessageQueue() {
+        if (isProcessingQueue || messageQueue.length === 0) return;
+        
+        isProcessingQueue = true;
+        const { message, metadata, resolve } = messageQueue.shift();
+        
+        const msgElement = document.createElement("div");
+        msgElement.className = "msg bot";
+        chat.appendChild(msgElement);
+        
+        const typingSpeed = metadata.type_speed || 20;
+        let i = 0;
+        
+        function typeWriter() {
+            if (i < message.length) {
+                msgElement.innerHTML = message.substring(0, i+1).replace(/\n/g, '<br>');
+                i++;
+                setTimeout(typeWriter, typingSpeed);
+            } else {
+                // Quando terminar de digitar esta parte
+                resolve();
+                
+                // Verifica se há mais mensagens na fila
+                setTimeout(() => {
+                    isProcessingQueue = false;
+                    processMessageQueue();
+                }, metadata.typing_delay || 500); // Pequena pausa entre mensagens
+            }
+        }
+        
+        typeWriter();
+    }
+
+    function appendMessage(sender, text, options = null, metadata = {}) {
+        if (sender !== "bot") {
+            // Mensagens do usuário são mostradas imediatamente
+            const msgElement = document.createElement("div");
+            msgElement.className = "msg user";
+            msgElement.innerHTML = text.replace(/\n/g, '<br>');
+            chat.appendChild(msgElement);
+            return;
+        }
+
+        // Para mensagens do bot, usamos o sistema de fila
+        return new Promise((resolve) => {
+            messageQueue.push({
+                message: text,
+                metadata: metadata,
+                resolve: resolve
+            });
+            
+            if (!isProcessingQueue) {
+                processMessageQueue();
+            }
+        });
+    }
+
+    function renderStructuredResponse(element, text, metadata) {
+        // Limpa o elemento
+        element.innerHTML = '';
+        
+        // Adiciona o texto com efeito de digitação
+        typeWriterEffect(element, text, 20, () => {
+            // Callback quando termina de digitar
+            if (metadata.typing_delay) {
+                showTyping();
+                setTimeout(() => {
+                    hideTyping();
+                }, metadata.typing_delay);
+            }
+        });
+    }
+
+    function typeWriterEffect(element, text, speed, onComplete = null) {
+        let i = 0;
+        function typeWriter() {
+            if (i < text.length) {
+                element.innerHTML = text.substring(0, i+1).replace(/\n/g, '<br>');
+                i++;
+                setTimeout(typeWriter, speed);
+            } else if (onComplete) {
+                onComplete();
+            }
+        }
+        typeWriter();
+    }
+
+    function renderPartialMessage(element, partialText, options) {
+        // Limpa o conteúdo
+        element.innerHTML = '';
+        
+        // Se for uma lista de cursos
+        if (partialText.match(/^(\d+\.\s.+(\n|$))+/gm) || partialText.match(/^-\s\d+\.\s.+(\n|$)/gm)) {
+            const lines = partialText.split('\n');
+            const listContainer = document.createElement("div");
+            
+            lines.forEach(line => {
+                if (line.trim()) {
+                    const cleanedLine = line.replace(/^\s*-\s*/, '').trim();
+                    const match = cleanedLine.match(/^(\d+\.)\s*(.+)/);
+                    
+                    if (match) {
+                        const courseBubble = document.createElement("div");
+                        courseBubble.className = "course-bubble";
+                        
+                        const courseTitle = document.createElement("div");
+                        courseTitle.className = "course-title";
+                        courseTitle.innerHTML = `<span class="course-number">${match[1]}</span> ${match[2]}`;
+                        
+                        courseBubble.appendChild(courseTitle);
+                        listContainer.appendChild(courseBubble);
+                    } else if (line.trim()) {
+                        const textLine = document.createElement("p");
+                        textLine.textContent = line;
+                        textLine.style.margin = "4px 0";
+                        listContainer.appendChild(textLine);
+                    }
+                }
+            });
+            
+            element.appendChild(listContainer);
+        } 
+        // Se contém HTML
+        else if (/<[a-z][\s\S]*>/i.test(partialText)) {
+            element.innerHTML = partialText;
+        }
+        // Mensagem normal
+        else {
+            element.innerHTML = partialText.replace(/\n/g, '<br>');
+        }
+    }
+
+    function renderFullMessage(element, text, options) {
+        renderPartialMessage(element, text, options);
+        
+        if (options && options.buttons) {
+            renderButtons(element, options);
+        }
+    }
+
+    function renderButtons(element, options) {
+        const buttonsContainer = document.createElement("div");
+        buttonsContainer.className = "buttons-container";
+        
+        options.buttons.forEach(button => {
+            const btn = document.createElement("button");
+            btn.className = "option-btn";
+            btn.textContent = button.title;
+            btn.onclick = () => {
+                if (button.payload) {
+                    sendSpecialCommand(button.payload);
+                }
+            };
+            buttonsContainer.appendChild(btn);
+        });
+        
+        element.appendChild(buttonsContainer);
+    }
+
+    function sendSpecialCommand(command) {
+      showTyping();
+      
+      fetch("http://localhost:5005/webhooks/rest/webhook", {
+          method: "POST",
+          headers: { 
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+          },
+          body: JSON.stringify({ 
+              sender: "user_" + Date.now(),
+              message: command,
+              metadata: {
+                  language: currentLanguage
+              }
+          })
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+      })
+      .then(data => {
+          hideTyping();
+          if (data && data.length > 0) {
+            data.forEach(response => {
+                if (response.text) {
+                    const metadata = response.metadata || {};
+                    appendMessage("bot", response.text, null, metadata);
+                }
+            });
+          } else {
+              appendMessage("bot", "Não recebi informações sobre este curso. Por favor, tente novamente.");
+          }
+      })
+      .catch(error => {
+          hideTyping();
+          console.error("Erro:", error);
+          appendMessage("bot", `Desculpe, ocorreu um erro ao buscar detalhes. Erro: ${error.message}`);
+      });
+    }
+
+    function updateNotificationBadge() {
+      const existingBadge = document.querySelector(".notification-badge");
+      
+      if (hasNewMessage) {
+        if (!existingBadge) {
+          const badge = document.createElement("div");
+          badge.className = "notification-badge";
+          badge.textContent = "!";
+          openBot.appendChild(badge);
+        }
+      } else {
+        if (existingBadge) {
+          existingBadge.remove();
+        }
+      }
+    }
+
+    // Antigo sinal de processamento
+    /*
+      function showTyping() {
+        if (isTyping) return;
+        isTyping = true;
+        
+        typingIndicator = document.createElement("div");
+        typingIndicator.className = "msg bot typing-indicator";
+        typingIndicator.innerHTML = 'UAbBot está digitando<span class="typing-cursor"></span>';
+        chat.appendChild(typingIndicator);
+        chat.scrollTop = chat.scrollHeight;
+      }
+    */
+
+    // Novo sinal de processamento, simple apenas com pontos
+    // function showTyping() {
+    //   if (isTyping) return;
+    //   isTyping = true;
+      
+    //   typingIndicator = document.createElement("div");
+    //   typingIndicator.className = "msg bot typing-indicator";
+      
+    //   // Cria os três pontos de digitação
+    //   for (let i = 0; i < 3; i++) {
+    //     const dot = document.createElement("div");
+    //     dot.className = "typing-dot";
+    //     typingIndicator.appendChild(dot);
+    //   }
+      
+    //   chat.appendChild(typingIndicator);
+    //   chat.scrollTop = chat.scrollHeight;
+    // }
+
+    // Novo sinal de processamento, com pontos e texto combinado
+    // function showTyping() {
+    //   if (isTyping) return;
+    //   isTyping = true;
+      
+    //   typingIndicator = document.createElement("div");
+    //   typingIndicator.className = "msg bot typing-indicator";
+      
+    //   // Adiciona o texto
+    //   const typingText = document.createElement("span");
+    //   typingText.className = "typing-text";
+    //   typingText.textContent = "UAbBot";
+    //   typingIndicator.appendChild(typingText);
+      
+    //   // Container para os pontos
+    //   const dotsContainer = document.createElement("div");
+    //   dotsContainer.className = "typing-dots";
+      
+    //   // Cria os três pontos de digitação
+    //   for (let i = 0; i < 3; i++) {
+    //     const dot = document.createElement("div");
+    //     dot.className = "typing-dot";
+    //     dotsContainer.appendChild(dot);
+    //   }
+      
+    //   typingIndicator.appendChild(dotsContainer);
+    //   chat.appendChild(typingIndicator);
+    //   chat.scrollTop = chat.scrollHeight;
+    // }
+
+    // Novo sinal de processamento, com pontos e imagem combinada, primeiro codigo
+    function showTyping() {
+        if (isTyping) return;
+        isTyping = true;
+        
+        typingIndicator = document.createElement("div");
+        typingIndicator.className = "msg bot typing-indicator";
+        
+        // Cria o container para a imagem e pontos
+        const typingContent = document.createElement("div");
+        typingContent.style.display = "flex";
+        typingContent.style.alignItems = "center";
+        typingContent.style.gap = "8px";
+        
+        // Adiciona o logotipo da UAb
+        const logo = document.createElement("img");
+        logo.src = "{{ url_for('static', filename='images/uab_logo.png') }}";
+        logo.style.width = "24px";
+        logo.style.height = "24px";
+        logo.style.objectFit = "contain";
+        typingContent.appendChild(logo);
+        
+        // Container para os pontos
+        const dotsContainer = document.createElement("div");
+        dotsContainer.className = "typing-dots";
+        
+        // Cria os três pontos de digitação
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement("div");
+            dot.className = "typing-dot";
+            dotsContainer.appendChild(dot);
+        }
+        
+        typingContent.appendChild(dotsContainer);
+        typingIndicator.appendChild(typingContent);
+        chat.appendChild(typingIndicator);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Novo sinal de processamento, com pontos e imagem combinada segundo codigo
+    function showTyping() {
+        if (isTyping) return;
+        isTyping = true;
+        
+        typingIndicator = document.createElement("div");
+        typingIndicator.className = "msg bot typing-indicator";
+        
+        // Container flexível para imagem e pontos
+        const typingContent = document.createElement("div");
+        typingContent.style.display = "flex";
+        typingContent.style.alignItems = "center";
+        typingContent.style.gap = "8px";
+        
+        // Cria e configura a imagem
+        const logo = document.createElement("img");
+        const timestamp = new Date().getTime(); // Evita cache
+        logo.src = `/static/images/uab_logo.png?${timestamp}`;
+        logo.alt = "UAbBot está digitando";
+        logo.style.width = "24px";
+        logo.style.height = "24px";
+        logo.style.objectFit = "contain";
+        
+        // Fallback robusto para caso a imagem não carregue
+        logo.onerror = function() {
+            console.error("Erro ao carregar o logo:", this.src);
+            this.style.display = "none";
+            const fallback = document.createElement("div");
+            fallback.textContent = "UAbBot";
+            fallback.style.fontWeight = "bold";
+            fallback.style.color = "#003366"; // Cor institucional
+            typingContent.prepend(fallback);
+        };
+        
+        typingContent.appendChild(logo);
+        
+        // Cria os pontos de digitação
+        const dotsContainer = document.createElement("div");
+        dotsContainer.className = "typing-dots";
+        
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement("div");
+            dot.className = "typing-dot";
+            dotsContainer.appendChild(dot);
+        }
+        
+        typingContent.appendChild(dotsContainer);
+        typingIndicator.appendChild(typingContent);
+        chat.appendChild(typingIndicator);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function hideTyping() {
+      if (!isTyping) return;
+      isTyping = false;
+      
+      if (typingIndicator) {
+        chat.removeChild(typingIndicator);
+        typingIndicator = null;
+      }
+    }
+
+    // Modifique a função sendMessage para lidar com Promises
+    async function sendMessage() {
+        const message = input.value.trim();
+        if (!message) return;
+
+        // Mostra mensagem do usuário imediatamente
+        appendMessage("user", message);
+        input.value = "";
+        
+        // Mostra indicador de digitação
+        showTyping();
+        
+        try {
+            const response = await fetch("http://localhost:5005/webhooks/rest/webhook", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({ 
+                    sender: "user_" + Date.now(),
+                    message: message,
+                    metadata: { language: currentLanguage }
+                })
+            });
+
+            const data = await response.json();
+            hideTyping();
+            
+            // Processa cada mensagem sequencialmente
+            for (const responseMsg of data) {
+                if (responseMsg.text) {
+                    await appendMessage("bot", responseMsg.text, null, responseMsg.metadata || {});
+                }
+            }
+        } catch (error) {
+            hideTyping();
+            console.error("Erro:", error);
+            await appendMessage("bot", `Desculpe, ocorreu um erro: ${error.message}`);
+        }
+    }
+
+    // Event Listeners
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!emojiPicker.contains(e.target) && e.target.id !== "emojiBtn") {
+        emojiPicker.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>

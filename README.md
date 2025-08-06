@@ -239,3 +239,11 @@ db.responses.createIndex(
         }
     }
 )
+
+ Classe MongoDBManager (Conexão e Operações Básicas)
+
+    Estabelece a conexão com o MongoDB
+
+    Fornece acesso ao GridFS (para armazenamento de arquivos binários)
+
+    
