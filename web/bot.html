@@ -779,34 +779,34 @@
     }
 
     /* ESTILO BASE DAS OPÇÕES */
-    .options-dropdown {
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-      z-index: 100;
-      min-width: 160px;
-      overflow: hidden;
-      display: none;
-      position: absolute;
-      right: 0;
-      top: 100%;
-    }
+  .options-dropdown {
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    z-index: 100;
+    min-width: 160px;
+    overflow: hidden;
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+  }
 
-    .option-item {
-      padding: 8px 12px;
-      cursor: pointer;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
+  .option-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
 
-    .option-item svg {
-      width: 14px;
-      height: 14px;
-      flex-shrink: 0;
-    }
+  .option-item svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
 
   </style>
 </head>
@@ -1450,7 +1450,9 @@ function showTyping(){
   
   typingIndicator.innerHTML = `
     <div style="display: flex; align-items: center; gap: 10px;">
-      <div class="typing-avatar">UAbBot</div>
+      <div class="typing-avatar">
+        <img src="static/images/uab_logo.png" alt="UAb" style="width: 32px; height: 32px; border-radius: 50%;">
+      </div>
       <div class="typing-dots">
         <div class="typing-dot"></div>
         <div class="typing-dot"></div>
@@ -1458,7 +1460,7 @@ function showTyping(){
       </div>
     </div>
   `;
-  
+
   chatEl.appendChild(typingIndicator);
   chatEl.scrollTop = chatEl.scrollHeight;
 }

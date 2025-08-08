@@ -32,8 +32,8 @@ class Config:
     EMBEDDINGS_PATH = "/app/data/embeddings.pkl"
     MAX_WAIT_TIME = 300  # segundos
     RETRY_INTERVAL = 5  # segundos
-    MODEL_NAME = "all-MiniLM-L6-v2"  # Modelo padrão
-    FALLBACK_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"  # Modelo alternativo
+    MODEL_NAME = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"  # Modelo principal (melhor qualidade)
+    FALLBACK_MODEL = "neuralmind/bert-base-portuguese-cased"  # Modelo alternativo (específico para PT)
     MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
     OCR_MAX_PAGES = 10
     SCAN_INTERVAL = 60 * 5  # 5 minutos entre verificações (em segundos)
@@ -415,6 +415,7 @@ class DocumentLoader:
                 
                 if processed_files > 0 or initial_load:
                     EmbeddingManager.save_embeddings(documents, embeddings)
+                    cls._generate_embeddings_for_all_documents(model, mongo)
                 
                 logger.info(f"📊 Total de novos documentos processados: {processed_files}")
                 return processed_files > 0
@@ -423,88 +424,6 @@ class DocumentLoader:
             logger.error(f"❌ Falha crítica no carregamento de documentos: {str(e)}", exc_info=True)
             return False
     
-    @classmethod
-    def continuous_loading(cls):
-        """Executa o carregamento contínuo de documentos"""
-        logger.info("🔄 Iniciando carregamento contínuo de documentos...")
-        
-        # Primeira carga completa
-        cls.load_documents(initial_load=True)
-        
-        while True:
-            try:
-                start_time = time.time()
-                
-                logger.info("⏳ Verificando novos documentos...")
-                files_to_process = cls._get_files_to_process()
-                
-                if files_to_process:
-                    logger.info(f"📁 Encontrados {len(files_to_process)} arquivos para processar")
-                    if cls.load_documents(initial_load=False):
-                        logger.info("✅ Documentos atualizados com sucesso")
-                else:
-                    logger.info("⏳ Nenhum arquivo novo ou modificado encontrado")
-                
-                # Calcula tempo de processamento
-                processing_time = time.time() - start_time
-                sleep_time = max(0, Config.SCAN_INTERVAL - processing_time)
-                
-                logger.info(f"⏳ Próxima verificação em {sleep_time:.1f} segundos...")
-                time.sleep(sleep_time)
-                
-            except KeyboardInterrupt:
-                logger.info("🛑 Interrupção recebida, encerrando...")
-                break
-            except Exception as e:
-                logger.error(f"⚠️ Erro no carregamento contínuo: {str(e)}")
-                logger.info("🔄 Tentando novamente em 1 minuto...")
-                time.sleep(60)
-    
-    @classmethod
-    def _get_files_to_process(cls) -> List[str]:
-        """Retorna lista de arquivos que precisam ser processados"""
-        try:
-            with MongoDBManager() as mongo:
-                # Obtém todos os arquivos no diretório
-                current_files = set(os.listdir(Config.DOCUMENTS_DIR))
-                
-                # Obtém todos os arquivos já processados do MongoDB
-                processed_files = {doc['filename'] for doc in mongo.db.documents.find({}, {'filename': 1})}
-                
-                # Arquivos novos (presentes no diretório mas não no MongoDB)
-                new_files = list(current_files - processed_files)
-                
-                # Verifica também por arquivos modificados (comparando hashes)
-                modified_files = []
-                for filename in current_files & processed_files:
-                    filepath = os.path.join(Config.DOCUMENTS_DIR, filename)
-                    if os.path.isfile(filepath):
-                        current_hash = DocumentProcessor.calculate_file_hash(filepath)
-                        db_doc = mongo.db.documents.find_one({'filename': filename}, {'file_hash': 1})
-                        if db_doc and db_doc.get('file_hash') != current_hash:
-                            modified_files.append(filename)
-                
-                return new_files + modified_files
-                
-        except Exception as e:
-            logger.error(f"❌ Erro ao verificar arquivos para processar: {str(e)}")
-            return []
-
-    # Adicione esta função ao DocumentLoader
-    @classmethod
-    def should_process_file(cls, filename: str, db) -> bool:
-        """Verifica se um arquivo deve ser processado"""
-        filepath = os.path.join(Config.DOCUMENTS_DIR, filename)
-        if not os.path.isfile(filepath):
-            return False
-        
-        current_hash = DocumentProcessor.calculate_file_hash(filepath)
-        existing_doc = db.documents.find_one({"filename": filename})
-        
-        # Se o arquivo não existe no banco ou o hash mudou
-        return not existing_doc or existing_doc.get("file_hash") != current_hash
-
-    # Modifique o método continuous_loading para:
     @classmethod
     def continuous_loading(cls):
         """Executa o carregamento contínuo de documentos"""
@@ -578,7 +497,101 @@ class DocumentLoader:
                 logger.error(f"⚠️ Erro no carregamento contínuo: {str(e)}")
                 logger.info("🔄 Tentando novamente em 1 minuto...")
                 time.sleep(60)
-                
+
+    @classmethod
+    def should_process_file(cls, filename: str, db) -> bool:
+        """Verifica se um arquivo deve ser processado"""
+        filepath = os.path.join(Config.DOCUMENTS_DIR, filename)
+        if not os.path.isfile(filepath):
+            return False
+        
+        current_hash = DocumentProcessor.calculate_file_hash(filepath)
+        existing_doc = db.documents.find_one({"filename": filename})
+        
+        # Se o arquivo não existe no banco ou o hash mudou
+        return not existing_doc or existing_doc.get("file_hash") != current_hash
+
+    @classmethod
+    def _generate_embeddings_for_all_documents(cls, model, mongo):
+        """Gera embeddings para todos os documentos que não os possuem"""
+        try:
+            # Documentos sem embeddings
+            docs_without_embeddings = list(mongo.db.documents.aggregate([
+                {
+                    "$lookup": {
+                        "from": "document_embeddings",
+                        "localField": "_id",
+                        "foreignField": "doc_id",
+                        "as": "embeddings"
+                    }
+                },
+                {
+                    "$match": {
+                        "embeddings": {"$size": 0},
+                        "text_content": {"$exists": True, "$ne": ""}
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                        "filename": 1,
+                        "text_content": 1
+                    }
+                }
+            ]))
+
+            if not docs_without_embeddings:
+                logger.info("✅ Todos os documentos já possuem embeddings")
+                return True
+
+            logger.info(f"🔍 Encontrados {len(docs_without_embeddings)} documentos sem embeddings")
+
+            batch_size = 50
+            processed = 0
+            total = len(docs_without_embeddings)
+
+            for i in range(0, total, batch_size):
+                batch = docs_without_embeddings[i:i + batch_size]
+                embeddings_batch = []
+
+                for doc in batch:
+                    try:
+                        content = doc.get("text_content", "")
+                        if not content:
+                            continue
+
+                        # Gera embedding com o modelo principal
+                        embedding = model.encode(content)
+                        
+                        # Prepara metadados para inserção
+                        metadata = {
+                            "doc_id": doc["_id"],
+                            "filename": doc.get("filename", ""),
+                            "embedding": embedding.tolist(),
+                            "last_updated": datetime.utcnow(),
+                            "content_preview": content[:200] + "..." if len(content) > 200 else content
+                        }
+                        embeddings_batch.append(metadata)
+                        processed += 1
+
+                    except Exception as e:
+                        logger.error(f"❌ Erro ao processar documento {doc.get('filename')}: {str(e)}")
+                        continue
+
+                if embeddings_batch:
+                    try:
+                        mongo.db.document_embeddings.insert_many(embeddings_batch)
+                        logger.info(f"📊 Progresso: {processed}/{total} documentos processados")
+                    except Exception as e:
+                        logger.error(f"❌ Erro ao salvar batch de embeddings: {str(e)}")
+
+            logger.info(f"✅ Embeddings gerados para {processed} documentos")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Falha crítica ao gerar embeddings: {str(e)}")
+            return False
+
 def main():
     """Função principal"""
     try:

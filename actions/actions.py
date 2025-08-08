@@ -11,6 +11,7 @@ import torch
 from datetime import datetime
 from collections import defaultdict
 import string
+from transformers import AutoTokenizer, AutoModel
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class ActionSmartSearch(Action):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger(__name__)
-        self.min_similarity = 0.4
+        self.min_similarity = 0.65
         self.faq_threshold = 0.82
         self.top_k = 3
         self.context_window = 3
@@ -35,10 +36,13 @@ class ActionSmartSearch(Action):
         self.collection = self.db["documents"]
         
         # Modelos de embeddings
-        self.sentence_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-        self.roberta_tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
-        self.roberta_model = RobertaModel.from_pretrained('roberta-base')
-        
+        # self.sentence_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+        # self.roberta_tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+        # self.roberta_model = RobertaModel.from_pretrained('roberta-base')
+        self.sentence_model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
+        self.roberta_tokenizer = AutoTokenizer.from_pretrained('neuralmind/bert-base-portuguese-cased')
+        self.roberta_model = AutoModel.from_pretrained('neuralmind/bert-base-portuguese-cased')
+
         # Configurações RAG
         self._initialize_rag_environment()
 
@@ -60,15 +64,84 @@ class ActionSmartSearch(Action):
                     default_language="portuguese"
                 )
             
-            # Gerar embeddings se necessário
-            self._generate_document_embeddings()
+            # Verificar e completar embeddings ausentes
+            self._verify_and_complete_embeddings()
             
         except Exception as e:
             self.logger.error(f"Erro na inicialização do RAG: {str(e)}")
             raise
 
+    def _verify_and_complete_embeddings(self):
+        """Verifica e completa embeddings ausentes"""
+        try:
+            # Contagem de documentos vs embeddings
+            total_docs = self.collection.count_documents({"text_content": {"$exists": True, "$ne": ""}})
+            total_embeddings = self.db.document_embeddings.count_documents({})
+            
+            self.logger.info(f"📊 Documentos: {total_docs}, Embeddings: {total_embeddings}")
+            
+            if total_docs > total_embeddings:
+                self.logger.warning("⚠️ Alguns documentos estão sem embeddings. Gerando...")
+                self._generate_missing_embeddings()
+        except Exception as e:
+            self.logger.error(f"Erro ao verificar embeddings: {str(e)}")
+
+    def _generate_missing_embeddings(self):
+        """Gera embeddings para documentos ausentes"""
+        try:
+            # Encontra documentos sem embeddings
+            missing_docs = list(self.collection.aggregate([
+                {
+                    "$lookup": {
+                        "from": "document_embeddings",
+                        "localField": "_id",
+                        "foreignField": "doc_id",
+                        "as": "embeddings"
+                    }
+                },
+                {
+                    "$match": {
+                        "embeddings": {"$size": 0},
+                        "text_content": {"$exists": True, "$ne": ""}
+                    }
+                },
+                {
+                    "$limit": 100  # Limite para não sobrecarregar
+                }
+            ]))
+
+            if not missing_docs:
+                self.logger.info("✅ Todos os documentos possuem embeddings")
+                return
+
+            self.logger.info(f"🔍 Encontrados {len(missing_docs)} documentos sem embeddings")
+
+            for doc in missing_docs:
+                try:
+                    content = doc.get("text_content", "")
+                    if not content:
+                        continue
+
+                    embedding = self._get_roberta_embedding(content)
+                    
+                    self.db.document_embeddings.insert_one({
+                        "doc_id": doc["_id"],
+                        "filename": doc.get("filename", ""),
+                        "embedding": embedding.tolist(),
+                        "last_updated": datetime.utcnow(),
+                        "content_preview": content[:200] + "..." if len(content) > 200 else content
+                    })
+                    
+                    self.logger.info(f"✅ Embedding gerado para {doc.get('filename')}")
+
+                except Exception as e:
+                    self.logger.error(f"❌ Erro ao gerar embedding para {doc.get('filename')}: {str(e)}")
+                    continue
+
+        except Exception as e:
+            self.logger.error(f"❌ Falha ao gerar embeddings ausentes: {str(e)}")
+
     def _get_roberta_embedding(self, text: str) -> np.ndarray:
-        """Gera embeddings com RoBERTa para o RAG"""
         inputs = self.roberta_tokenizer(
             text, 
             return_tensors="pt", 
@@ -78,7 +151,9 @@ class ActionSmartSearch(Action):
         )
         with torch.no_grad():
             outputs = self.roberta_model(**inputs)
-        return outputs.last_hidden_state[:, 0, :].numpy().squeeze()
+        # Extrai a embedding média de todas as tokens
+        embedding = outputs.last_hidden_state[:, 0, :].numpy().squeeze()
+        return embedding / np.linalg.norm(embedding)  # Normalização
 
     def _generate_document_embeddings(self):
         """Gera e armazena embeddings para documentos usando RoBERTa"""
@@ -191,9 +266,9 @@ class ActionSmartSearch(Action):
         return list(self.db.document_embeddings.aggregate(pipeline))
 
     def _preprocess_text(self, text: str) -> str:
-        """Pré-processa o texto para melhorar a correspondência"""
         text = text.lower()
-        text = re.sub(r'[^\w\s]', '', text)  # Remove pontuação
+        # Mantém pontuação básica que pode ser relevante
+        text = re.sub(r'[^\w\s.,!?]', '', text)
         return text.strip()
 
     def _extract_faqs(self, content: str) -> List[Dict]:
@@ -374,18 +449,18 @@ class ActionSmartSearch(Action):
         ]
 
     def _format_general_response(self, result: Dict, query: str) -> List[Dict]:
-        """Formata resposta para conteúdo geral em partes sequenciais"""
         relevant = self._find_relevant_section(result['content'], query)
         
-        confidence = ""
-        if result['similarity'] > 0.7:
-            confidence = " (alta confiança)"
-        elif result['similarity'] > 0.5:
-            confidence = " (média confiança)"
+        # Adiciona contexto sobre por que o resultado foi selecionado
+        explanation = ""
+        if result.get('similarity', 0) > 0.7:
+            explanation = " (Encontrei uma correspondência muito relevante)"
+        elif 'text_score' in result and result['text_score'] > 1.5:
+            explanation = " (Termos da sua busca aparecem frequentemente neste documento)"
         
         return [
             {
-                'text': f"📄 **Informação encontrada em '{result['filename']}'{confidence}:**",
+                'text': f"📄 **Informação de '{result['filename']}'{explanation}:**",
                 'metadata': {"type_speed": 20}
             },
             {
@@ -464,12 +539,20 @@ class ActionSmartSearch(Action):
         self.logger.info(f"Processando consulta: '{query}'")
         
         try:
-            # Primeiro tenta buscar com RAG
-            rag_results = self._semantic_search_rag(query, top_k=self.top_k)
+            # Busca híbrida - ambos os métodos em paralelo
+            rag_results = self._semantic_search_rag(query, top_k=3)
+            text_results = list(self.collection.find(
+                {"$text": {"$search": query}},
+                {"score": {"$meta": "textScore"}, "text_content": 1, "filename": 1}
+            ).sort([("score", {"$meta": "textScore"})]).limit(3))
             
-            # Se for uma pergunta de FAQ, tenta encontrar correspondência exata
-            if self._is_faq_query(query) and rag_results:
-                faq_match = self._find_best_faq_match(query, rag_results)
+            # Combina e ordena resultados
+            combined_results = self._combine_results(query, rag_results, text_results)
+            self.logger.info(f"Resultados combinados: {[(r['filename'], r.get('score', 0), r.get('text_score', 0)) for r in combined_results]}")
+            
+            # Verifica FAQ primeiro nos resultados combinados
+            if self._is_faq_query(query) and combined_results:
+                faq_match = self._find_best_faq_match(query, combined_results)
                 if faq_match:
                     response_parts = self._format_faq_response(faq_match)
                     for part in response_parts:
@@ -479,42 +562,119 @@ class ActionSmartSearch(Action):
                         )
                     return []
             
-            # Se encontrou resultados RAG, mostra em partes
-            if rag_results:
-                for part in self._format_general_response(rag_results[0], query):
+            # Processa os melhores resultados combinados
+            if combined_results:
+                best_result = combined_results[0]
+                
+                # Se o melhor resultado tem baixa similaridade, pede confirmação
+                if best_result.get('combined_score', 0) < 0.5:
                     dispatcher.utter_message(
-                        text=part['text'],
-                        metadata=part.get('metadata', {})
+                        text="Encontrei algumas informações que podem ser relevantes, mas não tenho certeza absoluta. Gostaria que eu mostrasse mesmo assim?",
+                        metadata={"buttons": [
+                            {"title": "Sim", "payload": "/confirmar_sim"},
+                            {"title": "Não", "payload": "/confirmar_nao"}
+                        ]}
                     )
-                return []
-            
-            # Fallback para busca textual
-            docs = list(self.collection.find(
-                {"$text": {"$search": query}},
-                {"score": {"$meta": "textScore"}, "text_content": 1, "filename": 1}
-            ).sort([("score", {"$meta": "textScore"})]).limit(1))
-            
-            if docs:
-                for part in self._format_general_response({
-                    'filename': docs[0]['filename'],
-                    'content': docs[0]['text_content'],
-                    'similarity': 0.5
-                }, query):
+                    return []
+                
+                for part in self._format_general_response(best_result, query):
                     dispatcher.utter_message(
                         text=part['text'],
                         metadata=part.get('metadata', {})
                     )
             else:
                 dispatcher.utter_message(
-                    text="Não encontrei informações sobre esse tópico. Poderia reformular sua pergunta?",
+                    text="Não encontrei informações sobre esse tópico. Poderia reformular sua pergunta com mais detalhes?",
                     metadata={"type_speed": 30}
                 )
                 
         except Exception as e:
             self.logger.error(f"Erro na busca: {str(e)}", exc_info=True)
             dispatcher.utter_message(
-                text="Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.",
+                text="Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.",
                 metadata={"type_speed": 30}
             )
 
         return []
+
+    def _combine_results(self, query: str, rag_results: List[Dict], text_results: List[Dict]) -> List[Dict]:
+        """Combina resultados da busca semântica e textual de forma ponderada"""
+        combined = []
+        
+        # Processa resultados RAG
+        for result in rag_results:
+            combined.append({
+                **result,
+                'type': 'semantic',
+                'text_score': 0,  # Resultados RAG não têm score de texto
+                'combined_score': result.get('similarity', 0) * 0.7  # Peso maior para semântica
+            })
+        
+        # Processa resultados de texto
+        for doc in text_results:
+            # Calcula similaridade semântica para resultados textuais
+            content = doc.get('text_content', '')
+            embedding = self._get_roberta_embedding(content[:512])
+            query_embedding = self._get_roberta_embedding(query)
+            semantic_sim = cosine_similarity([query_embedding], [embedding])[0][0]
+            
+            combined.append({
+                'doc_id': doc['_id'],
+                'filename': doc.get('filename', ''),
+                'content': content,
+                'type': 'text',
+                'text_score': doc.get('score', 0),
+                'similarity': semantic_sim,
+                'combined_score': (doc.get('score', 0)) * 0.3 + semantic_sim * 0.4  # Combina scores
+            })
+        
+        # Remove duplicados (mesmo doc_id)
+        seen = set()
+        unique_results = []
+        for result in combined:
+            doc_id = str(result.get('doc_id', ''))
+            if doc_id not in seen:
+                seen.add(doc_id)
+                unique_results.append(result)
+        
+        # Ordena por combined_score
+        return sorted(unique_results, key=lambda x: x['combined_score'], reverse=True)
+
+    def _format_general_response(self, result: Dict, query: str) -> List[Dict]:
+        """Formata resposta para conteúdo geral com informações de relevância"""
+        relevant = self._find_relevant_section(result['content'], query)
+        
+        # Determina o tipo de confiança
+        confidence = ""
+        if result['combined_score'] > 0.7:
+            confidence = " (alta relevância)"
+        elif result['combined_score'] > 0.5:
+            confidence = " (relevância média)"
+        else:
+            confidence = " (possível relevância)"
+        
+        # Determina a fonte
+        source_type = "🔍 Busca semântica" if result['type'] == 'semantic' else "📄 Busca textual"
+        
+        return [
+            {
+                'text': f"{source_type} - Documento: '{result['filename']}'{confidence}",
+                'metadata': {"type_speed": 20}
+            },
+            {
+                'text': f"\n\n{relevant['text']}",
+                'metadata': {"type_speed": 15}
+            },
+            {
+                'text': "\n\nEsta informação foi útil? Posso buscar mais detalhes se precisar.",
+                'metadata': {
+                    "type_speed": 30,
+                    "delay": 1500,
+                    "buttons": [
+                        {"title": "👍 Sim", "payload": "/feedback_positivo"},
+                        {"title": "👎 Não", "payload": "/feedback_negativo"},
+                        {"title": "🔍 Buscar mais", "payload": f"/buscar_mais_{result['doc_id']}"}
+                    ]
+                }
+            }
+        ]
