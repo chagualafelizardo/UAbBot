@@ -832,6 +832,69 @@
       display: block;
     }
 
+    .message-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    
+    /* Adicione estes novos estilos para os botões */
+    .message-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .message-button {
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      background: #f5f5f5;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .message-button:hover {
+      background: #e0e0e0;
+    }
+
+    /* Estilo específico para botões de feedback */
+    .feedback-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .feedback-button {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid #ddd;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .feedback-button:hover {
+      background: #f5f5f5;
+    }
+
+    /* Estilo para botões em mensagens do bot */
+    .bot .message-button,
+    .bot .feedback-button {
+      background: #f0f0f0;
+      border-color: #e0e0e0;
+    }
+
+    .bot .message-button:hover,
+    .bot .feedback-button:hover {
+      background: #e0e0e0;
+    }
+
   </style>
 </head>
 <body>
@@ -1252,11 +1315,12 @@ function renderConversation(conv){
 }
 
 // Função para criar elementos de mensagem com opções completas
-function createMessageElement(sender, text, messageId = null) {
+/* ---------- Create Message with Buttons ---------- */
+function createMessageElement(sender, text, messageId = null, metadata = {}) {
   const d = document.createElement('div');
   d.className = 'msg ' + (sender === 'user' ? 'user' : 'bot');
   
-  // Container principal
+  // Main container
   const container = document.createElement('div');
   container.style.display = 'flex';
   container.style.gap = '10px';
@@ -1270,119 +1334,47 @@ function createMessageElement(sender, text, messageId = null) {
     '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>' :
     '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><circle cx="12" cy="6" r="1"></circle><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="16" x2="16" y2="16"></line></svg>';
   
-  // Container de conteúdo
+  // Content container
   const content = document.createElement('div');
   content.style.position = 'relative';
   content.style.maxWidth = 'calc(100% - 50px)';
   
-  // Texto da mensagem
+  // Message text
   const textEl = document.createElement('div');
   textEl.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
   content.appendChild(textEl);
-  
-  // Opções da mensagem
-  const optionsDiv = document.createElement('div');
-  optionsDiv.className = 'message-options';
-  
-  const optionsBtn = document.createElement('button');
-  optionsBtn.className = 'options-btn';
-  optionsBtn.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-      <circle cx="12" cy="12" r="1" stroke-width="2"/>
-      <circle cx="12" cy="5" r="1" stroke-width="2"/>
-      <circle cx="12" cy="19" r="1" stroke-width="2"/>
-    </svg>
-  `;
-  
-  const dropdown = document.createElement('div');
-  dropdown.className = 'options-dropdown';
-  
-  // Criar opções
-  const shareOption = createOptionItem('Partilhar', 'share');
-  const deleteOption = createOptionItem('Apagar', 'delete', true);
-  
-  // Adicionar opção de renomear apenas para mensagens do usuário
-  if (sender === 'user') {
-    const renameOption = createOptionItem('Renomear', 'rename');
-    dropdown.appendChild(renameOption);
+
+  // Add buttons if they exist in metadata
+  if (metadata.buttons && metadata.buttons.length > 0) {
+    console.log('Creating buttons with data:', metadata.buttons); // Debug
     
-    renameOption.addEventListener('click', (e) => {
-      e.stopPropagation();
-      dropdown.classList.remove('show');
-      const newTitle = prompt('Novo nome para a conversa:', conversations[currentConversationId].title);
-      if (newTitle && newTitle.trim()) {
-        conversations[currentConversationId].title = newTitle.trim();
-        saveConversationsToStorage();
-        updateConversationList();
-      }
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'message-buttons';
+    
+    metadata.buttons.forEach(btn => {
+      const button = document.createElement('button');
+      button.className = 'message-button';
+      button.textContent = btn.title;
+      
+      button.addEventListener('click', () => {
+        console.log('Button clicked:', btn.payload); // Debug
+        userInput.value = btn.payload;
+        handleSendMessage();
+      });
+
+      buttonsContainer.appendChild(button);
     });
+
+    content.appendChild(buttonsContainer);
   }
   
-  // Evento para compartilhar
-  shareOption.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dropdown.classList.remove('show');
-    const shareText = `Mensagem de ${sender === 'user' ? 'você' : 'UAbBot'}:\n${text}`;
-    if (navigator.share) {
-      navigator.share({
-        title: 'Partilhar mensagem',
-        text: shareText
-      }).catch(err => console.log('Erro ao partilhar:', err));
-    } else {
-      prompt('Copie o texto para partilhar:', shareText);
-    }
-  });
-  
-  // Evento para apagar
-  deleteOption.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dropdown.classList.remove('show');
-    if (confirm('Tem certeza que deseja apagar esta mensagem?')) {
-      const conv = conversations[currentConversationId];
-      
-      // Encontrar índice da mensagem usando timestamp ou conteúdo
-      const messageIndex = conv.messages.findIndex(m => 
-        (messageId ? m.ts === messageId : m.text === text) &&
-        m.sender === sender
-      );
-      
-      if (messageIndex !== -1) {
-        conv.messages.splice(messageIndex, 1);
-        conv.updatedAt = Date.now();
-        saveConversationsToStorage();
-        renderConversation(conv);
-        updateConversationList();
-      }
-    }
-  });
-
-  dropdown.appendChild(shareOption);
-  dropdown.appendChild(deleteOption);
-  
-  optionsDiv.appendChild(optionsBtn);
-  optionsDiv.appendChild(dropdown);
-  content.appendChild(optionsDiv);
-  
-  // Evento para mostrar/ocultar dropdown
-  optionsBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dropdown.classList.toggle('show');
-  });
-  
-  // Fechar dropdown ao clicar fora
-  document.addEventListener('click', (e) => {
-    if (!dropdown.contains(e.target) && e.target !== optionsBtn) {
-      dropdown.classList.remove('show');
-    }
-  }, { once: true });
-  
+  // Add message to chat
   container.appendChild(avatar);
   container.appendChild(content);
   d.appendChild(container);
   
   return d;
 }
-
 
 /* ---------- Init convs ---------- */
 conversations = loadConversationsFromStorage();
@@ -1438,13 +1430,13 @@ function processMessageQueue(){
 }
 
 // Atualizar a função appendMessage para garantir que as opções sejam adicionadas
+// Função atualizada para adicionar mensagens com suporte a botões
 function appendMessage(sender, text, options = null, metadata = {}) {
   return new Promise((resolve) => {
     const messageId = metadata.messageId || Date.now();
-    const msgElement = createMessageElement(sender, text, messageId);
+    const msgElement = createMessageElement(sender, text, messageId, metadata);
     chatEl.appendChild(msgElement);
-    chatEl.scrollTop = chatEl.scrollHeight;
-
+    
     // Resetar o estado de digitação
     isTypingActive = true;
     
@@ -1454,10 +1446,8 @@ function appendMessage(sender, text, options = null, metadata = {}) {
       const textEl = msgElement.querySelector('div > div:first-child');
       textEl.innerHTML = '';
       
-      // Armazenar a referência da função atual
       currentTypingWriter = function writer() {
         if (!isTypingActive) {
-          // Mostrar texto completo se interrompido
           textEl.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
           currentTypingWriter = null;
           resolve();
@@ -1725,10 +1715,8 @@ async function sendMessageToRasa(userMessage){
 }
 
 /* ---------- Handle send message ---------- */
-// Modificar o handleSendMessage para incluir metadata
 // Modifique a função handleSendMessage para suportar abort
 async function handleSendMessage() {
-  // Se já está enviando, cancela a operação atual
   if (isSending) {
     stopSending();
     return;
@@ -1737,26 +1725,20 @@ async function handleSendMessage() {
   const text = userInput.value.trim();
   if (!text) return;
   
-  // Inicia o estado de envio
   isSending = true;
-  isTypingActive = true; // Permite que a digitação ocorra
+  isTypingActive = true;
   sendBtn.classList.add('sending');
   
-  // Adiciona a mensagem do usuário
   const messageId = Date.now();
   await appendMessage('user', text, null, { messageId });
   addMessageToConversation(currentConversationId, 'user', text);
   userInput.value = '';
   userInput.style.height = 'auto';
   
-  // Mostra indicador de digitação
   showTyping();
-  
-  // Prepara para cancelar a requisição
   abortController = new AbortController();
   
   try {
-    // Faz a requisição para o Rasa
     const resp = await fetch("http://localhost:5005/webhooks/rest/webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -1768,57 +1750,50 @@ async function handleSendMessage() {
       signal: abortController.signal
     });
     
-    // Se o usuário cancelou durante a requisição, não processa as respostas
     if (!isSending) return;
     
     const responses = await resp.json();
     hideTyping();
     
-    // Processa cada resposta do bot
+    console.log('Full Rasa response:', responses); // Debug
+    
     if (responses && responses.length > 0) {
       for (const r of responses) {
-        // Verifica novamente se o usuário não cancelou
         if (!isSending) break;
         
-        const botText = r.text || (r?.custom && JSON.stringify(r.custom)) || '';
-        await appendMessage('bot', botText, null, { 
-          ...(r.metadata || {}),
-          messageId: Date.now(),
-          type_speed: 20 
-        });
+        // Debug: Log each response part
+        console.log('Processing response part:', r);
         
-        // Verifica mais uma vez antes de adicionar à conversa
-        if (isSending) {
-          addMessageToConversation(currentConversationId, 'bot', botText);
+        // Handle different response formats
+        if (r.text) {
+          await processBotResponse(r.text, r.metadata || {});
+        }
+        
+        if (r.custom) {
+          // Handle custom payload (buttons)
+          if (Array.isArray(r.custom)) {
+            for (const part of r.custom) {
+              await processBotResponse(part.text, part.metadata || {});
+            }
+          } else if (r.custom.metadata) {
+            await processBotResponse(r.text || '', r.custom.metadata);
+          }
         }
       }
     } else if (isSending) {
-      // Só mostra erro se não foi cancelado
       await appendMessage('bot', 'Desculpe, não obtive resposta do servidor.', null, {
         messageId: Date.now()
       });
-      addMessageToConversation(currentConversationId, 'bot', 'Desculpe, não obtive resposta do servidor.');
     }
   } catch (e) {
-    // Só trata erros se não foi um cancelamento intencional
-    if (e.name === 'AbortError') {
-      if (isSending) { // Se ainda estava marcado como enviando (não deveria acontecer)
-        hideTyping();
-        await appendMessage('bot', 'Resposta interrompida.', null, {
-          messageId: Date.now()
-        });
-        addMessageToConversation(currentConversationId, 'bot', 'Resposta interrompida.');
-      }
-    } else if (isSending) {
+    console.error('Error:', e);
+    if (isSending) {
       hideTyping();
-      console.error('Erro Rasa', e);
       await appendMessage('bot', 'Erro: não foi possível contactar o servidor.', null, {
         messageId: Date.now()
       });
-      addMessageToConversation(currentConversationId, 'bot', 'Erro: não foi possível contactar o servidor.');
     }
   } finally {
-    // Limpa o estado
     if (isSending) {
       isSending = false;
       sendBtn.classList.remove('sending');
@@ -1826,6 +1801,23 @@ async function handleSendMessage() {
     abortController = null;
   }
 }
+
+// Helper function to process bot responses
+async function processBotResponse(text, metadata) {
+  const messageId = Date.now();
+  
+  // Debug: log the metadata we're receiving
+  console.log('Processing bot response with metadata:', metadata);
+  
+  await appendMessage('bot', text, null, {
+    ...metadata,
+    messageId,
+    type_speed: metadata.type_speed || 20
+  });
+  
+  addMessageToConversation(currentConversationId, 'bot', text);
+}
+
 
 // Função para parar o envio e digitação
 function stopSending() {

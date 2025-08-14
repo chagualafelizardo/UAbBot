@@ -491,9 +491,45 @@ class ActionSmartSearch(Action):
         
         return response_parts
 
+    def _generate_related_questions(self, faq_match: Dict) -> List[Dict]:
+        """Gera perguntas relacionadas baseadas no conteúdo da FAQ"""
+        related_questions = []
+        
+        # Perguntas genéricas que se aplicam a qualquer FAQ
+        base_questions = [
+            "Onde posso encontrar mais informações sobre isso?",
+            "Preciso de algum documento específico para isso?",
+            "Qual o prazo para resolver isso?"
+        ]
+        
+        # Perguntas específicas baseadas no conteúdo
+        content = faq_match.get('answer', '').lower()
+        if 'horário' in content or 'tempo' in content:
+            related_questions.append("Quais são os melhores horários para estudar?")
+        if 'organiz' in content:
+            related_questions.append("Como posso me organizar melhor?")
+        if 'apoio' in content or 'grupo' in content:
+            related_questions.append("Existem grupos de apoio na UAb?")
+        if 'financeiro' in content or 'pagamento' in content:
+            related_questions.extend([
+                "Quais são as formas de pagamento?",
+                "Existem bolsas disponíveis?"
+            ])
+        if 'estudar' in content or 'curso' in content:
+            related_questions.extend([
+                "Como funciona o modelo de ensino?",
+                "Quantas horas preciso dedicar por semana?"
+            ])
+        
+        # Adiciona perguntas genéricas se não tiver muitas específicas
+        if len(related_questions) < 3:
+            related_questions.extend(base_questions[:3-len(related_questions)])
+        
+        return related_questions[:3]  # Limita a 3 perguntas
+
     def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
-        """Formata resposta para FAQ com botões de feedback"""
-        response = [
+        """Formata resposta para FAQ com botões de feedback e perguntas sugeridas"""
+        response_parts = [
             {
                 'text': f"❓ **Pergunta encontrada em {faq_match['filename']}:**\n{faq_match['question']}",
                 'metadata': {
@@ -512,13 +548,26 @@ class ActionSmartSearch(Action):
         
         # Adiciona informações extras para FAQs financeiras
         if faq_match.get('is_financial', False):
-            response.append({
+            response_parts.append({
                 'text': "\n💡 Você também pode solicitar condições especiais diretamente com o serviço financeiro.",
                 'metadata': {"type_speed": 20}
             })
         
-        response.append({
-            'text': "Esta informação resolveu sua dúvida?",
+        # Gera perguntas relacionadas
+        related_questions = self._generate_related_questions(faq_match)
+        if related_questions:
+            questions_text = "\n\n🔍 Talvez você queira saber também:\n" + "\n".join(f"• {q}" for q in related_questions)
+            response_parts.append({
+                'text': questions_text,
+                'metadata': {
+                    'type_speed': 20,
+                    'suggested_questions': related_questions
+                }
+            })
+        
+        # Parte final com botões de feedback
+        response_parts.append({
+            'text': "\nEsta informação resolveu sua dúvida?",
             'metadata': {
                 'response_part': 'confirmation',
                 'buttons': [
@@ -530,11 +579,12 @@ class ActionSmartSearch(Action):
                         'title': '👎 Não',
                         'payload': '/feedback_negative'
                     }
-                ]
+                ],
+                'complete_before_next': True
             }
         })
         
-        return response
+        return response_parts
 
     def _format_general_response(self, result: Dict, query: str) -> List[Dict]:
         """Formata resposta para conteúdo geral"""
@@ -609,11 +659,24 @@ class ActionSmartSearch(Action):
             if self._is_faq_query(query) and sorted_results:
                 faq_match = self._find_best_faq_match(query, sorted_results)
                 if faq_match:
-                    for part in self._format_faq_response(faq_match):
-                        dispatcher.utter_message(
-                            text=part['text'],
-                            metadata=part.get('metadata', {})
-                        )
+                    response_parts = self._format_faq_response(faq_match)
+                    for part in response_parts:
+                        # Se houver perguntas sugeridas, adiciona como quick replies
+                        if 'suggested_questions' in part.get('metadata', {}):
+                            buttons = [{
+                                'title': q,
+                                'payload': q
+                            } for q in part['metadata']['suggested_questions']]
+                            
+                            dispatcher.utter_message(
+                                text=part['text'],
+                                buttons=buttons
+                            )
+                        else:
+                            dispatcher.utter_message(
+                                text=part['text'],
+                                metadata=part.get('metadata', {})
+                            )
                     return []
             
             # Mostra o melhor resultado
