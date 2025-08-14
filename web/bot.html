@@ -332,8 +332,8 @@
       stroke-width: 2;
     }
     
-    
-    #sendBtn { 
+    /* Estilo para o botão de enviar/parar */
+    #sendBtn {
       background: var(--accent);
       color: white;
       border: none;
@@ -344,15 +344,32 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s, transform 0.1s;
+      transition: all 0.2s;
     }
-    
+
     #sendBtn:hover {
       background: #0069d9;
     }
-    
+
     #sendBtn:active {
       transform: scale(0.95);
+    }
+
+    /* Remove a cor vermelha do estado sending */
+    #sendBtn.sending {
+      background: var(--accent); /* Mantém azul */
+    }
+
+    #stopIcon {
+      display: none;
+    }
+
+    #sendBtn.sending #sendIcon {
+      display: none;
+    }
+
+    #sendBtn.sending #stopIcon {
+      display: block;
     }
     
     /* EMOJI PICKER */
@@ -779,34 +796,41 @@
     }
 
     /* ESTILO BASE DAS OPÇÕES */
-  .options-dropdown {
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    z-index: 100;
-    min-width: 160px;
-    overflow: hidden;
-    display: none;
-    position: absolute;
-    right: 0;
-    top: 100%;
-  }
+    #sendBtn {
+      background: var(--accent); /* Azul */
+      color: white;
+      border: none;
+      border-radius: 8px;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
 
-  .option-item {
-    padding: 8px 12px;
-    cursor: pointer;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: background 0.2s;
-    white-space: nowrap;
-  }
+    #sendBtn:hover {
+      background: #0069d9; /* Azul mais escuro no hover */
+    }
 
-  .option-item svg {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-  }
+    /* Mantemos o fundo azul mesmo no estado "sending" */
+    #sendBtn.sending {
+      background: var(--accent);
+    }
+
+    /* Esconde/mostra os ícones conforme o estado */
+    #stopIcon {
+      display: none;
+    }
+
+    #sendBtn.sending #sendIcon {
+      display: none;
+    }
+
+    #sendBtn.sending #stopIcon {
+      display: block;
+    }
 
   </style>
 </head>
@@ -848,11 +872,17 @@
       <div class="input-area">
         <div class="input-container">
           <textarea id="userInput" placeholder="Digite sua mensagem..." rows="1"></textarea>
-          <button id="sendBtn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke-width="2"/>
-            </svg>
-          </button>
+            <button id="sendBtn">
+              <!-- Ícone de Enviar (seta) -->
+              <svg id="sendIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+              
+              <!-- Ícone de Parar (retângulo branco centralizado) -->
+              <svg id="stopIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" style="display: none;">
+                <rect x="6" y="6" width="12" height="12" fill="white" rx="1"/>
+              </svg>
+            </button>
         </div>
         
         <!-- BOTTOM BAR WITH ACTIONS - NOVO DESIGN -->
@@ -886,6 +916,8 @@ function uid(){ return 'c_' + Date.now() + '_' + Math.random().toString(36).slic
 
 let conversations = {};
 let currentConversationId = null;
+let isSending = false;
+let abortController = null;
 
 function loadConversationsFromStorage(){
   try {
@@ -1366,6 +1398,8 @@ let messageQueue = [];
 let isProcessingQueue = false;
 let typingIndicator = null;
 let isTyping = false;
+let isTypingActive = true; // Controla se a digitação deve continuar
+let currentTypingWriter = null; // Referência à função de digitação atual
 
 // Atualizar a função processMessageQueue para passar o messageId
 function processMessageQueue(){
@@ -1410,25 +1444,38 @@ function appendMessage(sender, text, options = null, metadata = {}) {
     const msgElement = createMessageElement(sender, text, messageId);
     chatEl.appendChild(msgElement);
     chatEl.scrollTop = chatEl.scrollHeight;
+
+    // Resetar o estado de digitação
+    isTypingActive = true;
     
-    // Para mensagens do bot com efeito de digitação
     if (sender === 'bot' && metadata.type_speed) {
       const typingSpeed = metadata.type_speed;
       let i = 0;
       const textEl = msgElement.querySelector('div > div:first-child');
       textEl.innerHTML = '';
       
-      function writer() {
+      // Armazenar a referência da função atual
+      currentTypingWriter = function writer() {
+        if (!isTypingActive) {
+          // Mostrar texto completo se interrompido
+          textEl.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+          currentTypingWriter = null;
+          resolve();
+          return;
+        }
+        
         if (i < text.length) {
           textEl.innerHTML = escapeHtml(text.substring(0, i + 1)).replace(/\n/g, '<br>');
           i++;
           setTimeout(writer, typingSpeed);
         } else {
+          currentTypingWriter = null;
           resolve();
         }
         chatEl.scrollTop = chatEl.scrollHeight;
-      }
-      writer();
+      };
+      
+      currentTypingWriter();
     } else {
       resolve();
     }
@@ -1679,36 +1726,136 @@ async function sendMessageToRasa(userMessage){
 
 /* ---------- Handle send message ---------- */
 // Modificar o handleSendMessage para incluir metadata
+// Modifique a função handleSendMessage para suportar abort
 async function handleSendMessage() {
+  // Se já está enviando, cancela a operação atual
+  if (isSending) {
+    stopSending();
+    return;
+  }
+
   const text = userInput.value.trim();
   if (!text) return;
   
+  // Inicia o estado de envio
+  isSending = true;
+  isTypingActive = true; // Permite que a digitação ocorra
+  sendBtn.classList.add('sending');
+  
+  // Adiciona a mensagem do usuário
   const messageId = Date.now();
   await appendMessage('user', text, null, { messageId });
   addMessageToConversation(currentConversationId, 'user', text);
   userInput.value = '';
   userInput.style.height = 'auto';
   
+  // Mostra indicador de digitação
   showTyping();
-  const responses = await sendMessageToRasa(text);
+  
+  // Prepara para cancelar a requisição
+  abortController = new AbortController();
+  
+  try {
+    // Faz a requisição para o Rasa
+    const resp = await fetch("http://localhost:5005/webhooks/rest/webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({ 
+        sender: "user_" + Date.now(), 
+        message: text, 
+        metadata: { language: currentLanguage } 
+      }),
+      signal: abortController.signal
+    });
+    
+    // Se o usuário cancelou durante a requisição, não processa as respostas
+    if (!isSending) return;
+    
+    const responses = await resp.json();
+    hideTyping();
+    
+    // Processa cada resposta do bot
+    if (responses && responses.length > 0) {
+      for (const r of responses) {
+        // Verifica novamente se o usuário não cancelou
+        if (!isSending) break;
+        
+        const botText = r.text || (r?.custom && JSON.stringify(r.custom)) || '';
+        await appendMessage('bot', botText, null, { 
+          ...(r.metadata || {}),
+          messageId: Date.now(),
+          type_speed: 20 
+        });
+        
+        // Verifica mais uma vez antes de adicionar à conversa
+        if (isSending) {
+          addMessageToConversation(currentConversationId, 'bot', botText);
+        }
+      }
+    } else if (isSending) {
+      // Só mostra erro se não foi cancelado
+      await appendMessage('bot', 'Desculpe, não obtive resposta do servidor.', null, {
+        messageId: Date.now()
+      });
+      addMessageToConversation(currentConversationId, 'bot', 'Desculpe, não obtive resposta do servidor.');
+    }
+  } catch (e) {
+    // Só trata erros se não foi um cancelamento intencional
+    if (e.name === 'AbortError') {
+      if (isSending) { // Se ainda estava marcado como enviando (não deveria acontecer)
+        hideTyping();
+        await appendMessage('bot', 'Resposta interrompida.', null, {
+          messageId: Date.now()
+        });
+        addMessageToConversation(currentConversationId, 'bot', 'Resposta interrompida.');
+      }
+    } else if (isSending) {
+      hideTyping();
+      console.error('Erro Rasa', e);
+      await appendMessage('bot', 'Erro: não foi possível contactar o servidor.', null, {
+        messageId: Date.now()
+      });
+      addMessageToConversation(currentConversationId, 'bot', 'Erro: não foi possível contactar o servidor.');
+    }
+  } finally {
+    // Limpa o estado
+    if (isSending) {
+      isSending = false;
+      sendBtn.classList.remove('sending');
+    }
+    abortController = null;
+  }
+}
+
+// Função para parar o envio e digitação
+function stopSending() {
+  // Interrompe a requisição HTTP se estiver em andamento
+  if (abortController) {
+    abortController.abort();
+  }
+  
+  // Interrompe a animação de digitação
+  isTypingActive = false;
+  
+  // Força parar a digitação atual imediatamente
+  if (currentTypingWriter) {
+    currentTypingWriter = null;
+  }
+  
+  // Atualiza o estado do botão
+  isSending = false;
+  sendBtn.classList.remove('sending');
+  
+  // Esconde o indicador de digitação
   hideTyping();
   
-  if (responses && responses.length > 0) {
-    for (const r of responses) {
-      const botText = r.text || (r?.custom && JSON.stringify(r.custom)) || '';
-      await appendMessage('bot', botText, null, { 
-        ...(r.metadata || {}),
-        messageId: Date.now(),
-        type_speed: 20 
-      });
-      addMessageToConversation(currentConversationId, 'bot', botText);
-    }
-  } else {
-    await appendMessage('bot', 'Desculpe, não obtive resposta do servidor.', null, {
-      messageId: Date.now()
-    });
-    addMessageToConversation(currentConversationId, 'bot', 'Desculpe, não obtive resposta do servidor.');
-  }
+  // Mostra mensagem de interrupção
+  appendMessage('bot', 'Resposta interrompida.', null, {
+    messageId: Date.now(),
+    type_speed: 0 // Sem animação de digitação
+  }).then(() => {
+    addMessageToConversation(currentConversationId, 'bot', 'Resposta interrompida.');
+  });
 }
 
 /* ---------- UI Events ---------- */
