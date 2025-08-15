@@ -906,24 +906,106 @@
   background: #e0e0e0;
 }
 
-/* Estilo específico para botões em mensagens do bot */
-.bot .message-button {
-  background: #e3f2fd;
-  border-color: #bbdefb;
+/* Estilos para os botões de perguntas sugeridas */
+.message-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 15px;
 }
 
-.bot .message-button:hover {
+.suggested-question-button {
+  padding: 10px 15px;
+  border-radius: 20px;
+  border: 1px solid #007bff;
+  background: #e3f2fd;
+  color: #007bff;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.suggested-question-button:hover {
   background: #bbdefb;
 }
 
-/* Estilo para botões de feedback */
+/* Estilos para os botões de feedback */
+.feedback-buttons-container {
+  margin-top: 15px;
+  border-top: 1px dashed #ddd;
+  padding-top: 15px;
+}
+
+.feedback-prompt {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
 .feedback-button {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
   background: #f8f9fa;
-  border-color: #e9ecef;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  margin-right: 8px;
 }
 
 .feedback-button:hover {
   background: #e9ecef;
+}
+
+/* Estilo específico para o botão "Sim" */
+.feedback-button[title*="Sim"] {
+  border-color: #28a745;
+  background: #e6f7eb;
+  color: #28a745;
+}
+
+/* Estilo específico para o botão "Não" */
+.feedback-button[title*="Não"] {
+  border-color: #dc3545;
+  background: #fce8e8;
+  color: #dc3545;
+}
+
+.buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.suggestion-button {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #90caf9;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.suggestion-button:hover {
+    background: #bbdefb;
+}
+
+.feedback-button {
+    background: #f5f5f5;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.feedback-button:hover {
+    background: #e0e0e0;
 }
 
   </style>
@@ -1842,8 +1924,7 @@ async function processBotResponse(text, metadata) {
   // Criar elemento de mensagem
   const msgEl = document.createElement('div');
   msgEl.className = 'msg bot';
-  chatEl.appendChild(msgEl);
-
+  
   // Adicionar texto da mensagem
   const textEl = document.createElement('div');
   textEl.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
@@ -1854,23 +1935,49 @@ async function processBotResponse(text, metadata) {
     const buttonsContainer = document.createElement('div');
     buttonsContainer.className = 'message-buttons';
     
-    metadata.buttons.forEach(btn => {
-      const button = document.createElement('button');
-      button.className = 'message-button';
-      button.textContent = btn.title;
-      
-      button.addEventListener('click', () => {
-        userInput.value = btn.payload;
-        handleSendMessage();
+    // Organizar botões: perguntas primeiro, feedback depois
+    const questionButtons = metadata.buttons.filter(b => !b.payload.startsWith('/feedback'));
+    const feedbackButtons = metadata.buttons.filter(b => b.payload.startsWith('/feedback'));
+    
+    // Adicionar botões de perguntas
+    if (questionButtons.length > 0) {
+      questionButtons.forEach(btn => {
+        const button = document.createElement('button');
+        button.className = 'suggested-question-button';
+        button.textContent = btn.title;
+        button.addEventListener('click', () => {
+          userInput.value = btn.payload;
+          handleSendMessage();
+        });
+        buttonsContainer.appendChild(button);
       });
-
-      buttonsContainer.appendChild(button);
-    });
+    }
+    
+    // Adicionar botões de feedback
+    if (feedbackButtons.length > 0) {
+      const feedbackContainer = document.createElement('div');
+      feedbackContainer.className = 'feedback-buttons-container';
+      feedbackContainer.innerHTML = '<div class="feedback-prompt">Esta informação resolveu sua dúvida?</div>';
+      
+      feedbackButtons.forEach(btn => {
+        const button = document.createElement('button');
+        button.className = 'feedback-button';
+        button.textContent = btn.title;
+        button.addEventListener('click', () => {
+          userInput.value = btn.payload;
+          handleSendMessage();
+        });
+        feedbackContainer.appendChild(button);
+      });
+      
+      buttonsContainer.appendChild(feedbackContainer);
+    }
     
     msgEl.appendChild(buttonsContainer);
   }
 
-  // Adicionar ao histórico da conversa
+  // Adicionar mensagem ao chat
+  chatEl.appendChild(msgEl);
   addMessageToConversation(currentConversationId, 'bot', text);
   chatEl.scrollTop = chatEl.scrollHeight;
 }

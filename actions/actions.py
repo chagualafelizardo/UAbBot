@@ -658,112 +658,48 @@ class ActionSmartSearch(Action):
         
         return actions[:5]  # Limita a 5 ações
 
-    def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
-        """Formata resposta para FAQ com perguntas contextualizadas"""
-        response_parts = [
-            {
-                'text': f"❓ **Pergunta encontrada em {faq_match['filename']}:**\n{faq_match['question']}",
-                'metadata': {
-                    'response_part': 'question',
-                    'complete_before_next': True
-                }
-            },
-            {
-                'text': f"✅ **Resposta completa:**\n{faq_match['answer']}",
-                'metadata': {
-                    'response_part': 'answer',
-                    'complete_before_next': True
-                }
-            }
-        ]
-        
-        # Gera perguntas contextualizadas
+    def _format_faq_response(self, faq_match: Dict) -> Dict:
+        """Formata resposta para FAQ com botões de perguntas sugeridas e feedback"""
+        # Gera perguntas relacionadas
         related_questions = self._generate_related_questions(faq_match)
         
-        if related_questions:
-            questions_text = "\n\n🔍 Com base nesta informação, você pode querer saber:"
-            response_parts.append({
-                'text': questions_text,
-                'metadata': {
-                    'type_speed': 20,
-                    'suggested_questions': related_questions
-                }
-            })
-        else:
-            # Se não gerou perguntas, oferece ajuda genérica
-            response_parts.append({
-                'text': "\n\nPosso te ajudar com mais alguma informação sobre este assunto?",
-                'metadata': {
-                    'type_speed': 20
-                }
-            })
-        
-        # Feedback
-        response_parts.append({
-            'text': "\nEsta informação foi útil?",
-            'metadata': {
-                'buttons': [
-                    {'title': '👍 Sim', 'payload': '/feedback_positive'},
-                    {'title': '👎 Não', 'payload': '/feedback_negative'}
-                ],
-                'complete_before_next': True
-            }
-        })
-        
-        return response_parts
-
-    def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
-        """Formata resposta para FAQ com perguntas sugeridas geradas dinamicamente"""
-        response_parts = [
-            {
-                'text': f"❓ **Pergunta encontrada em {faq_match['filename']}:**\n{faq_match['question']}",
-                'metadata': {
-                    'response_part': 'question',
-                    'complete_before_next': True
-                }
-            },
-            {
-                'text': f"✅ **Resposta completa:**\n{faq_match['answer']}",
-                'metadata': {
-                    'response_part': 'answer',
-                    'complete_before_next': True
-                }
-            }
+        # Prepara o texto base
+        text_parts = [
+            f"❓ **Pergunta encontrada em {faq_match['filename']}:**",
+            faq_match['question'],
+            "",
+            f"✅ **Resposta completa:**",
+            faq_match['answer']
         ]
         
-        # Gera perguntas relacionadas de forma inteligente
-        related_questions = self._generate_related_questions(faq_match)
+        # Adiciona seção financeira se aplicável
+        if faq_match.get('is_financial', False):
+            text_parts.extend([
+                "",
+                "💡 Você também pode solicitar condições especiais diretamente com o serviço financeiro."
+            ])
         
+        # Prepara os botões
+        buttons = []
+        
+        # Adiciona perguntas sugeridas como botões
         if related_questions:
-            questions_text = "\n\n🔍 Talvez você queira saber também sobre:"
-            response_parts.append({
-                'text': questions_text,
-                'metadata': {
-                    'type_speed': 20,
-                    'suggested_questions': related_questions
-                }
-            })
+            text_parts.extend(["", "🔍 Talvez você queira saber também:"])
+            buttons.extend([{"title": q, "payload": q} for q in related_questions])
         
-        # Parte final com botões de feedback
-        response_parts.append({
-            'text': "\nEsta informação resolveu sua dúvida?",
-            'metadata': {
-                'response_part': 'confirmation',
-                'buttons': [
-                    {
-                        'title': '👍 Sim',
-                        'payload': '/feedback_positive'
-                    },
-                    {
-                        'title': '👎 Não',
-                        'payload': '/feedback_negative'
-                    }
-                ],
-                'complete_before_next': True
-            }
-        })
+        # Adiciona botões de feedback
+        buttons.extend([
+            {"title": "👍 Sim", "payload": "/feedback_positive"},
+            {"title": "👎 Não", "payload": "/feedback_negative"}
+        ])
         
-        return response_parts
+        # Junta todas as partes do texto
+        full_text = "\n".join(text_parts)
+        
+        return {
+            "text": full_text,
+            "buttons": buttons
+        }
 
     def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
         """Formata resposta para FAQ com botões de feedback e perguntas sugeridas"""
@@ -823,6 +759,7 @@ class ActionSmartSearch(Action):
         })
         
         return response_parts
+    
     def _format_general_response(self, result: Dict, query: str) -> List[Dict]:
         """Formata resposta para conteúdo geral"""
         relevant = self._find_relevant_section(result['content'], query)
