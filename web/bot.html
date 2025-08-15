@@ -884,16 +884,47 @@
     }
 
     /* Estilo para botões em mensagens do bot */
-    .bot .message-button,
-    .bot .feedback-button {
-      background: #f0f0f0;
-      border-color: #e0e0e0;
-    }
+    /* Estilos para os botões */
+.message-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
 
-    .bot .message-button:hover,
-    .bot .feedback-button:hover {
-      background: #e0e0e0;
-    }
+.message-button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.message-button:hover {
+  background: #e0e0e0;
+}
+
+/* Estilo específico para botões em mensagens do bot */
+.bot .message-button {
+  background: #e3f2fd;
+  border-color: #bbdefb;
+}
+
+.bot .message-button:hover {
+  background: #bbdefb;
+}
+
+/* Estilo para botões de feedback */
+.feedback-button {
+  background: #f8f9fa;
+  border-color: #e9ecef;
+}
+
+.feedback-button:hover {
+  background: #e9ecef;
+}
 
   </style>
 </head>
@@ -1755,35 +1786,37 @@ async function handleSendMessage() {
     const responses = await resp.json();
     hideTyping();
     
-    console.log('Full Rasa response:', responses); // Debug
+    console.log('Full Rasa response:', responses);
     
     if (responses && responses.length > 0) {
       for (const r of responses) {
         if (!isSending) break;
         
-        // Debug: Log each response part
         console.log('Processing response part:', r);
         
-        // Handle different response formats
-        if (r.text) {
-          await processBotResponse(r.text, r.metadata || {});
+        // Handle text response with buttons
+        if (r.text && r.buttons) {
+          await processBotResponse(r.text, {
+            buttons: r.buttons,
+            messageId: Date.now()
+          });
+        } 
+        // Handle simple text response
+        else if (r.text) {
+          await processBotResponse(r.text, {
+            messageId: Date.now(),
+            type_speed: 20
+          });
         }
-        
-        if (r.custom) {
-          // Handle custom payload (buttons)
+        // Handle custom payload
+        else if (r.custom) {
           if (Array.isArray(r.custom)) {
             for (const part of r.custom) {
-              await processBotResponse(part.text, part.metadata || {});
+              await processBotResponse(part.text || '', part.metadata || {});
             }
-          } else if (r.custom.metadata) {
-            await processBotResponse(r.text || '', r.custom.metadata);
           }
         }
       }
-    } else if (isSending) {
-      await appendMessage('bot', 'Desculpe, não obtive resposta do servidor.', null, {
-        messageId: Date.now()
-      });
     }
   } catch (e) {
     console.error('Error:', e);
@@ -1806,18 +1839,41 @@ async function handleSendMessage() {
 async function processBotResponse(text, metadata) {
   const messageId = Date.now();
   
-  // Debug: log the metadata we're receiving
-  console.log('Processing bot response with metadata:', metadata);
-  
-  await appendMessage('bot', text, null, {
-    ...metadata,
-    messageId,
-    type_speed: metadata.type_speed || 20
-  });
-  
-  addMessageToConversation(currentConversationId, 'bot', text);
-}
+  // Criar elemento de mensagem
+  const msgEl = document.createElement('div');
+  msgEl.className = 'msg bot';
+  chatEl.appendChild(msgEl);
 
+  // Adicionar texto da mensagem
+  const textEl = document.createElement('div');
+  textEl.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+  msgEl.appendChild(textEl);
+
+  // Adicionar botões se existirem
+  if (metadata.buttons && metadata.buttons.length > 0) {
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'message-buttons';
+    
+    metadata.buttons.forEach(btn => {
+      const button = document.createElement('button');
+      button.className = 'message-button';
+      button.textContent = btn.title;
+      
+      button.addEventListener('click', () => {
+        userInput.value = btn.payload;
+        handleSendMessage();
+      });
+
+      buttonsContainer.appendChild(button);
+    });
+    
+    msgEl.appendChild(buttonsContainer);
+  }
+
+  // Adicionar ao histórico da conversa
+  addMessageToConversation(currentConversationId, 'bot', text);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
 
 // Função para parar o envio e digitação
 function stopSending() {

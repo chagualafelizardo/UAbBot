@@ -823,7 +823,6 @@ class ActionSmartSearch(Action):
         })
         
         return response_parts
-
     def _format_general_response(self, result: Dict, query: str) -> List[Dict]:
         """Formata resposta para conteúdo geral"""
         relevant = self._find_relevant_section(result['content'], query)
@@ -894,24 +893,20 @@ class ActionSmartSearch(Action):
             
             sorted_results = sorted(unique_results.values(), key=lambda x: x['combined_score'], reverse=True)
             
-            # Tratamento especial para FAQs
+             # Tratamento especial para FAQs
             if self._is_faq_query(query) and sorted_results:
                 faq_match = self._find_best_faq_match(query, sorted_results)
                 if faq_match:
                     response_parts = self._format_faq_response(faq_match)
                     for part in response_parts:
-                        # Se houver perguntas sugeridas, adiciona como quick replies
-                        if 'suggested_questions' in part.get('metadata', {}):
-                            buttons = [{
-                                'title': q,
-                                'payload': q
-                            } for q in part['metadata']['suggested_questions']]
-                            
+                        if part.get('metadata', {}).get('buttons'):
+                            # Se tiver botões, envia como quick replies
                             dispatcher.utter_message(
                                 text=part['text'],
-                                buttons=buttons
+                                buttons=part['metadata']['buttons']
                             )
                         else:
+                            # Se não tiver botões, envia normalmente
                             dispatcher.utter_message(
                                 text=part['text'],
                                 metadata=part.get('metadata', {})
