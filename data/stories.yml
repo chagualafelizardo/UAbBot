@@ -25,3 +25,8 @@ stories:
     steps:
       - intent: general_query
       - action: action_search_documents
+
+  - story: handle follow up question
+    steps:
+    - intent: ask_follow_up
+    - action: action_answer_suggested_question

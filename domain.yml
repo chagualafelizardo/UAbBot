@@ -8,6 +8,7 @@ intents:
   - general_query
   - feedback_positive
   - feedback_negative
+  - ask_follow_up
 
 actions:
   - utter_greet
@@ -15,7 +16,8 @@ actions:
   - utter_goodbye
   - utter_doubt
   - action_search_documents
-
+  - action_answer_suggested_question
+  
 responses:
   utter_greet:
     - text: "Olá! Como posso te ajudar hoje?"
@@ -42,6 +44,9 @@ responses:
       
   utter_feedback_negative:
     - text: "Entendi. Vou tentar ajudar melhor. Poderia reformular sua pergunta ou especificar o que ainda não ficou claro?"
+
+  utter_follow_up:
+    - text: "Resposta para: {question}"
 
 session_config:
   session_expiration_time: 60

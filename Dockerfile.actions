@@ -7,7 +7,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HF_HUB_DISABLE_TELEMETRY=1 \
     TRANSFORMERS_CACHE=/app/data/model_cache \
     HF_HOME=/app/data/model_cache \
-    TORCH_HOME=/app/data/model_cache
+    TORCH_HOME=/app/data/model_cache \
+    # Configuração do NLTK
+    NLTK_DATA=/app/data/nltk_data
 
 # Atualiza o sistema e instala as dependências do sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -36,6 +38,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Dependências para otimização
     libopenblas-dev \
     libomp-dev \
+    # Dependências para NLTK
+    unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -47,7 +51,12 @@ COPY requirements.txt .
 
 # Instala os pacotes Python PRIMEIRO
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir nltk
+
+# Baixa os dados do NLTK necessários
+RUN mkdir -p /app/data/nltk_data && \
+    python -c "import nltk; nltk.download('punkt', download_dir='/app/data/nltk_data'); nltk.download('stopwords', download_dir='/app/data/nltk_data'); nltk.download('averaged_perceptron_tagger', download_dir='/app/data/nltk_data')"
 
 # SÓ DEPOIS faz o download do modelo
 RUN mkdir -p /app/data/model_cache && \

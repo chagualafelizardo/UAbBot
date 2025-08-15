@@ -1,4 +1,8 @@
 from rasa_sdk import Action
+from collections import Counter
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from nltk import pos_tag
 import pymongo
 import logging
 import re
@@ -11,6 +15,8 @@ import torch
 from datetime import datetime
 from collections import defaultdict
 import string
+import nltk
+
 
 logger = logging.getLogger(__name__)
 
@@ -491,41 +497,273 @@ class ActionSmartSearch(Action):
         
         return response_parts
 
-    def _generate_related_questions(self, faq_match: Dict) -> List[Dict]:
-        """Gera perguntas relacionadas baseadas no conteúdo da FAQ"""
-        related_questions = []
+    def _generate_related_questions(self, faq_match: Dict) -> List[str]:
+        """Gera perguntas relevantes baseadas em análise semântica do conteúdo"""
+        try:
+            answer = faq_match['answer']
+            question = faq_match['question']
+            
+            # Primeiro, identificamos os tópicos principais na resposta
+            main_topics = self._extract_main_topics(answer)
+            
+            # Depois identificamos conceitos específicos
+            specific_concepts = self._extract_specific_concepts(answer)
+            
+            # Finalmente detectamos ações/recomendações
+            actions_recommendations = self._extract_actions_recommendations(answer)
+            
+            # Geração de perguntas inteligentes
+            generated_questions = []
+            
+            # 1. Perguntas sobre tópicos principais
+            for topic in main_topics[:2]:
+                if len(topic.split()) <= 4:  # Evita tópicos muito longos
+                    generated_questions.append(f"Como {topic} afeta meu desempenho acadêmico?")
+                    generated_questions.append(f"Quais são as melhores estratégias para lidar com {topic}?")
+            
+            # 2. Perguntas sobre conceitos específicos
+            for concept in specific_concepts:
+                if concept.lower() not in question.lower():  # Evita repetição
+                    generated_questions.append(f"Como funciona {concept} na UAb?")
+                    generated_questions.append(f"Quem pode me ajudar com questões sobre {concept}?")
+            
+            # 3. Perguntas sobre ações/recomendações
+            for action in actions_recommendations:
+                if "inscri" in action:
+                    generated_questions.append("Como faço para me inscrever nessa opção?")
+                elif "contact" in action or "falar" in action:
+                    generated_questions.append("Qual é o contato para essa assistência?")
+                elif "estratégia" in action or "método" in action:
+                    generated_questions.append("Onde posso aprender mais sobre essas estratégias?")
+            
+            # Filtro de qualidade
+            final_questions = []
+            seen = set()
+            for q in generated_questions:
+                clean_q = q.lower().replace("?", "").strip()
+                if (clean_q not in seen and 
+                    len(q.split()) > 5 and 
+                    not any(word in q.lower() for word in ["qual é a função", "como o"])):
+                    seen.add(clean_q)
+                    final_questions.append(q)
+            
+            return final_questions[:3] if final_questions else []
+
+        except Exception as e:
+            self.logger.error(f"Erro na geração de perguntas: {str(e)}")
+            return []
+
+    def _extract_main_topics(self, text: str) -> List[str]:
+        """Identifica os tópicos principais mencionados no texto"""
+        # Padrão para frases importantes (normalmente após dois pontos ou marcadores)
+        topics = re.findall(r'(?:^|\n|•\s)([A-Z][^.:?!]+?)(?=[.:?!]|\n|$)', text)
         
-        # Perguntas genéricas que se aplicam a qualquer FAQ
-        base_questions = [
-            "Onde posso encontrar mais informações sobre isso?",
-            "Preciso de algum documento específico para isso?",
-            "Qual o prazo para resolver isso?"
+        # Filtra tópicos por relevância
+        filtered = []
+        common_words = {"isso", "que", "qual", "como", "quando"}
+        for topic in topics:
+            words = topic.split()
+            if (4 <= len(words) <= 8 and 
+                not any(w.lower() in common_words for w in words[:3])):
+                filtered.append(topic.strip())
+        
+        return list(dict.fromkeys(filtered))[:5]  # Remove duplicados e limita
+
+    def _extract_specific_concepts(self, text: str) -> List[str]:
+        """Extrai conceitos específicos (siglas, nomes próprios, termos técnicos)"""
+        # Padrão para siglas (2-4 letras maiúsculas)
+        acronyms = re.findall(r'\b[A-Z]{2,4}\b', text)
+        
+        # Padrão para termos técnicos entre aspas ou em itálico
+        terms = re.findall(r'"(.*?)"|\'(.*?)\'|\b([A-Z][a-z]+ [A-Z][a-z]+)\b', text)
+        flat_terms = [t for group in terms for t in group if t]
+        
+        # Padrão para nomes de serviços/departamentos
+        services = re.findall(r'\b([A-Z][a-z]+ (?:de|do|da) [A-Z][a-z]+)\b', text)
+        
+        # Combina todos os conceitos
+        all_concepts = acronyms + flat_terms + services
+        return list(dict.fromkeys(all_concepts))[:5]  # Remove duplicados e limita
+
+    def _extract_actions_recommendations(self, text: str) -> List[str]:
+        """Identifica ações ou recomendações específicas no texto"""
+        # Padrão para verbos no infinitivo seguidos de complemento
+        actions = re.findall(r'\b([Pp]ode [a-záéíóúâêôçãõ]+)\b|\b([Dd]eve [a-záéíóúâêôçãõ]+)\b', text)
+        flat_actions = [a for group in actions for a in group if a]
+        
+        # Padrão para recomendações explícitas
+        recommendations = re.findall(r'\b([Rr]ecomenda-se [^.!?]+)|([Cc]ontate [^.!?]+)', text)
+        flat_recommendations = [r for group in recommendations for r in group if r]
+        
+        return (flat_actions + flat_recommendations)[:5]  # Limita a 5 itens
+
+    def _extract_context_keywords(self, text: str) -> Dict[str, List[str]]:
+        """Extrai palavras-chave contextuais sem usar NLTK"""
+        keywords = {
+            "prazo": [],
+            "documento": [],
+            "contato": [],
+            "requisito": []
+        }
+        
+        # Mapeamento de padrões
+        patterns = {
+            "prazo": r"(prazo|até|dia|data|vencimento).{0,20}?\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d+\s+dias?)\b",
+            "documento": r"(documento|formulário|requerimento|comprovante).{0,20}?(entregar|apresentar|necessário)",
+            "contato": r"(contatar|telefone|email|setor|secretaria).{0,20}?\b(\+?\d{9,15}|\b[\w\.-]+@[\w\.-]+\.\w{2,}\b)",
+            "requisito": r"(requer|necessário|precisa).{0,15}?(ter|possuir|estar)"
+        }
+        
+        for key, pattern in patterns.items():
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                if match.group():
+                    keywords[key].append(match.group())
+        
+        return keywords
+
+    def _extract_entities(self, text: str) -> List[str]:
+        """Extrai entidades importantes sem usar NLTK"""
+        # Padrões para entidades (maiúsculas após pontuação ou no início)
+        entities = re.findall(r"(?:^|[.!?]\s+)([A-Z][a-záéíóúâêôçãõ]+(?:\s+[A-Z][a-záéíóúâêôçãõ]+)*)", text)
+        
+        # Filtra entidades comuns e repetidas
+        common_entities = {"Universidade", "Aluno", "Curso", "Processo"}
+        unique_entities = []
+        seen = set()
+        
+        for entity in entities:
+            clean_entity = entity.strip()
+            if (clean_entity not in seen and 
+                clean_entity not in common_entities and
+                len(clean_entity.split()) < 4):
+                seen.add(clean_entity)
+                unique_entities.append(clean_entity)
+        
+        return unique_entities[:5]  # Limita a 5 entidades
+
+    def _extract_actions(self, text: str) -> List[Tuple[str, str]]:
+        """Extrai pares ação-alvo sem usar NLTK"""
+        # Padrão: verbo + substantivo
+        actions = []
+        matches = re.finditer(r"\b([a-záéíóúâêôçãõ]+r)\b.{0,10}?\b([a-záéíóúâêôçãõ]{3,}s?\b)", text, re.IGNORECASE)
+        
+        for match in matches:
+            verb = match.group(1).lower()
+            noun = match.group(2).lower()
+            
+            # Filtra verbos comuns
+            if verb not in {"ser", "ter", "haver", "poder"}:
+                actions.append((verb, noun))
+        
+        return actions[:5]  # Limita a 5 ações
+
+    def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
+        """Formata resposta para FAQ com perguntas contextualizadas"""
+        response_parts = [
+            {
+                'text': f"❓ **Pergunta encontrada em {faq_match['filename']}:**\n{faq_match['question']}",
+                'metadata': {
+                    'response_part': 'question',
+                    'complete_before_next': True
+                }
+            },
+            {
+                'text': f"✅ **Resposta completa:**\n{faq_match['answer']}",
+                'metadata': {
+                    'response_part': 'answer',
+                    'complete_before_next': True
+                }
+            }
         ]
         
-        # Perguntas específicas baseadas no conteúdo
-        content = faq_match.get('answer', '').lower()
-        if 'horário' in content or 'tempo' in content:
-            related_questions.append("Quais são os melhores horários para estudar?")
-        if 'organiz' in content:
-            related_questions.append("Como posso me organizar melhor?")
-        if 'apoio' in content or 'grupo' in content:
-            related_questions.append("Existem grupos de apoio na UAb?")
-        if 'financeiro' in content or 'pagamento' in content:
-            related_questions.extend([
-                "Quais são as formas de pagamento?",
-                "Existem bolsas disponíveis?"
-            ])
-        if 'estudar' in content or 'curso' in content:
-            related_questions.extend([
-                "Como funciona o modelo de ensino?",
-                "Quantas horas preciso dedicar por semana?"
-            ])
+        # Gera perguntas contextualizadas
+        related_questions = self._generate_related_questions(faq_match)
         
-        # Adiciona perguntas genéricas se não tiver muitas específicas
-        if len(related_questions) < 3:
-            related_questions.extend(base_questions[:3-len(related_questions)])
+        if related_questions:
+            questions_text = "\n\n🔍 Com base nesta informação, você pode querer saber:"
+            response_parts.append({
+                'text': questions_text,
+                'metadata': {
+                    'type_speed': 20,
+                    'suggested_questions': related_questions
+                }
+            })
+        else:
+            # Se não gerou perguntas, oferece ajuda genérica
+            response_parts.append({
+                'text': "\n\nPosso te ajudar com mais alguma informação sobre este assunto?",
+                'metadata': {
+                    'type_speed': 20
+                }
+            })
         
-        return related_questions[:3]  # Limita a 3 perguntas
+        # Feedback
+        response_parts.append({
+            'text': "\nEsta informação foi útil?",
+            'metadata': {
+                'buttons': [
+                    {'title': '👍 Sim', 'payload': '/feedback_positive'},
+                    {'title': '👎 Não', 'payload': '/feedback_negative'}
+                ],
+                'complete_before_next': True
+            }
+        })
+        
+        return response_parts
+
+    def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
+        """Formata resposta para FAQ com perguntas sugeridas geradas dinamicamente"""
+        response_parts = [
+            {
+                'text': f"❓ **Pergunta encontrada em {faq_match['filename']}:**\n{faq_match['question']}",
+                'metadata': {
+                    'response_part': 'question',
+                    'complete_before_next': True
+                }
+            },
+            {
+                'text': f"✅ **Resposta completa:**\n{faq_match['answer']}",
+                'metadata': {
+                    'response_part': 'answer',
+                    'complete_before_next': True
+                }
+            }
+        ]
+        
+        # Gera perguntas relacionadas de forma inteligente
+        related_questions = self._generate_related_questions(faq_match)
+        
+        if related_questions:
+            questions_text = "\n\n🔍 Talvez você queira saber também sobre:"
+            response_parts.append({
+                'text': questions_text,
+                'metadata': {
+                    'type_speed': 20,
+                    'suggested_questions': related_questions
+                }
+            })
+        
+        # Parte final com botões de feedback
+        response_parts.append({
+            'text': "\nEsta informação resolveu sua dúvida?",
+            'metadata': {
+                'response_part': 'confirmation',
+                'buttons': [
+                    {
+                        'title': '👍 Sim',
+                        'payload': '/feedback_positive'
+                    },
+                    {
+                        'title': '👎 Não',
+                        'payload': '/feedback_negative'
+                    }
+                ],
+                'complete_before_next': True
+            }
+        })
+        
+        return response_parts
 
     def _format_faq_response(self, faq_match: Dict) -> List[Dict]:
         """Formata resposta para FAQ com botões de feedback e perguntas sugeridas"""
@@ -614,6 +852,7 @@ class ActionSmartSearch(Action):
                 'metadata': {"type_speed": 30, "delay": 1500}
             }
         ]
+
 
     def run(self, dispatcher, tracker, domain):
         query = tracker.latest_message.get('text', '').strip()
